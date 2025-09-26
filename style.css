@@ -1,0 +1,97 @@
+/* === Police générale moderne et élégante === */
+body {
+  font-family: "Roboto", "Helvetica Neue", Arial, sans-serif;
+  color: #1a1a1a;
+  background-color: #fafafa; /* fond clair neutre */
+  line-height: 1.7;
+  margin: 40px auto;
+  max-width: 900px; /* centrage élégant */
+  padding: 0 20px;
+}
+
+/* === Titres === */
+h1 {
+  font-family: "Orbitron", sans-serif;
+  font-size: 2.2em;
+  font-weight: 700;
+  background: linear-gradient(90deg, #0f62fe, #08bdba);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; /* effet néon dégradé */
+  margin-bottom: 15px;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+h2 {
+  font-size: 1.6em;
+  font-weight: 600;
+  color: #0f62fe;
+  margin-top: 30px;
+  border-left: 4px solid #0f62fe;
+  padding-left: 12px;
+}
+
+h3 {
+  font-size: 1.3em;
+  font-weight: 500;
+  color: #08bdba;
+}
+
+h4 {
+  font-size: 1.1em;
+  font-weight: 500;
+  color: #ff832b;
+}
+
+/* === Paragraphes === */
+p {
+  margin: 14px 0;
+  text-align: justify;
+}
+
+/* === Tableaux minimalistes === */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+thead {
+  background: linear-gradient(90deg, #0f62fe, #08bdba);
+  color: #fff;
+  text-align: left;
+}
+th, td {
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+}
+tbody tr:nth-child(odd) {
+  background-color: #f9f9f9;
+}
+
+/* === Code blocks élégants === */
+pre, code {
+  font-family: "Fira Code", monospace;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #f3f6fa;
+  border: 1px solid #dbe2ef;
+  color: #0f62fe;
+  display: block;
+  overflow-x: auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* === Liens futuristes === */
+a {
+  color: #08bdba;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+a:hover {
+  color: #ff832b;
+  text-shadow: 0 0 8px rgba(255,131,43,0.6);
+}
