@@ -30,5 +30,5 @@ Bienvenue sur ce dépôt GitHub regroupant l’ensemble de mes **travaux pratiqu
 
 1. **Cloner le dépôt** :
    ```bash
-   git clone https://github.com/TON-USER/Analyse-des-donnees.git
+   git clone https://github.com/Zaeron1/TPs_Data_analysis/git
    cd Analyse-des-donnees
