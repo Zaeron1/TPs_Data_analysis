@@ -1,6 +1,6 @@
 # 📊 Cours d’Analyse des Données – TPs & Rapports
 
-Bienvenue sur ce dépôt GitHub regroupant l’ensemble de mes **travaux pratiques (TPs)** et **rapports** réalisés dans le cadre du cours *Analyse des données* à l’Université de Liège / Université Clermont Auvergne (adapter selon ton cas).
+Bienvenue sur ce dépôt GitHub regroupant l’ensemble de mes **travaux pratiques (TPs)** et **rapports** réalisés dans le cadre du cours *Analyse des données* 
 
 ---
 
