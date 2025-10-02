@@ -9,9 +9,9 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Alexandre Michaux, Beniamino Orsini" />
+<meta name="author" content="Alexandre Michaux" />
 
-<meta name="date" content="2025-09-26" />
+<meta name="date" content="2025-10-02" />
 
 <title>TP 0 — Analyse de données</title>
 
@@ -2855,8 +2855,8 @@ border-radius: 0px;
 
 
 <h1 class="title toc-ignore">TP 0 — Analyse de données</h1>
-<h4 class="author">Alexandre Michaux, Beniamino Orsini</h4>
-<h4 class="date">2025-09-26</h4>
+<h4 class="author">Alexandre Michaux</h4>
+<h4 class="date">2025-10-02</h4>
 
 </div>
 
@@ -2874,71 +2874,112 @@ color: #007acc;
 border-bottom: 1px solid #ddd;
 padding-bottom: 5px;
 }
-a {
-color: #007acc;
-text-decoration: none;
-}
-a:hover {
-text-decoration: underline;
-}
+a { color: #007acc; text-decoration: none; }
+a:hover { text-decoration: underline; }
 code {
-background-color: #f5f5f5;
-color: #d6336c;
-padding: 2px 6px;
-border-radius: 4px;
+background-color: #f5f5f5; color: #d6336c;
+padding: 2px 6px; border-radius: 4px;
 font-family: 'Courier New', monospace;
 }
 pre {
-background-color: #f5f5f5;
-padding: 10px;
-border-left: 4px solid #007acc;
-overflow-x: auto;
-border-radius: 6px;
+background-color: #f5f5f5; padding: 10px;
+border-left: 4px solid #007acc; overflow-x: auto; border-radius: 6px;
 }
-table {
-border-collapse: collapse;
-width: 100%;
-margin-top: 20px;
-}
-th, td {
-border: 1px solid #ccc;
-padding: 8px;
-text-align: left;
-}
-th {
-background-color: #e9f5ff;
-color: #007acc;
-}
-tr:nth-child(even) {
-background-color: #f9f9f9;
-}
-::-webkit-scrollbar {
-width: 8px;
-}
-::-webkit-scrollbar-thumb {
-background: #007acc;
-border-radius: 4px;
-}
+table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+th { background-color: #e9f5ff; color: #007acc; }
+tr:nth-child(even) { background-color: #f9f9f9; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: #007acc; border-radius: 4px; }
 </style>
-<div id="introduction" class="section level1" number="1">
-<h1><span class="header-section-number">1</span> 📘 Introduction</h1>
-<p>Bienvenue dans ce TP d’analyse de données. Ce document est conçu pour
-être clair, agréable à lire et interactif.</p>
-<div id="objectifs" class="section level2" number="1.1">
-<h2><span class="header-section-number">1.1</span> 🎯 Objectifs</h2>
+<div id="présentation-du-projet" class="section level1" number="1">
+<h1><span class="header-section-number">1</span> 📘 Présentation du
+projet</h1>
+<p>Ce <strong>TP 0</strong> pose le cadre du projet d’<strong>analyse de
+données</strong> fondé sur les mêmes jeux que mon <strong>TFB</strong>
+sur <strong>Mercure</strong>.<br />
+Nous exploiterons (i) des <strong>données expérimentales</strong> de
+fusion partielle (<em>Mer8</em> et <em>Mer15</em> ; oxydes majeurs en wt
+%), et (ii) des <strong>cartes MESSENGER</strong> (ratios géochimiques
+par régions).<br />
+L’objectif global est de <strong>mettre en regard</strong> les
+compositions de surface (MESSENGER) et les <strong>fusions
+expérimentales</strong> (Mer8/Mer15) pour <strong>inférer les
+conditions</strong> de genèse (pression, profondeur, éventuelle teneur
+en eau) des laves sources.<br />
+Le livrable final visé est un <strong>socle reproductible</strong> (R
+Markdown) permettant, à partir de ces données, de produire des
+<strong>figures comparatives</strong> (bivariées/ternaires) et des
+<strong>tables propres</strong> prêtes à être intégrées au mémoire.</p>
+<blockquote>
+<p>En pratique, ce document servira d’« épine dorsale » : on y
+structurera le chargement des jeux de données, leur harmonisation
+(noms/units), la préparation de ratios <strong>molyaires clefs</strong>
+(Mg/Si, Al/Si, Ca/Si), et l’esquisse des graphes nécessaires à
+l’interprétation <strong>expériences ↔︎ surface</strong>.</p>
+</blockquote>
+</div>
+<div id="objectifs-vue-densemble" class="section level1" number="2">
+<h1><span class="header-section-number">2</span> 🎯 Objectifs (vue
+d’ensemble)</h1>
 <ul>
-<li>Manipuler des données avec R</li>
-<li>Visualiser des résultats</li>
-<li>Comprendre les fondements statistiques</li>
+<li>Définir une <strong>structure claire</strong> pour charger et
+décrire les données (Mer8, Mer15, MESSENGER).<br />
+</li>
+<li>Préparer un <strong>pipeline reproductible</strong> (sans entrer ici
+dans le code) pour obtenir des sorties <strong>cohérentes</strong>
+(ratios, figures, exports).<br />
+</li>
+<li>Poser la <strong>question scientifique</strong> directrice :
+<em>quelles conditions de fusion partielle reproduisent le mieux les
+compositions de surface de Mercure ?</em></li>
 </ul>
 </div>
-<div id="exemple-de-code" class="section level2" number="1.2">
-<h2><span class="header-section-number">1.2</span> 🧪 Exemple de
-code</h2>
-<p>```r library(tidyverse)</p>
-<p>data &lt;- tibble(x = rnorm(100), y = rnorm(100)) ggplot(data, aes(x,
-y)) + geom_point(color = “#007acc”) + theme_minimal()</p>
+<div id="données-références-rapides" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> 🗂️ Données (références
+rapides)</h1>
+<ul>
+<li><strong>Expériences</strong> : Mer8, Mer15 (oxydes majeurs en wt
+%).<br />
+</li>
+<li><strong>Observations</strong> : MESSENGER (ratios régionaux et/ou
+oxydes agrégés).</li>
+</ul>
 </div>
+<div id="méthodologie-schéma-prévu" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> 🧭 Méthodologie (schéma
+prévu)</h1>
+<ul>
+<li>Harmonisation des colonnes, unités, métadonnées.<br />
+</li>
+<li>Calcul/validation des <strong>ratios molaires</strong> (Mg/Si,
+Al/Si, Ca/Si).<br />
+</li>
+<li>Comparaisons visuelles (bivariés/ternaires) <strong>Expériences ↔︎
+MESSENGER</strong>.</li>
+</ul>
+</div>
+<div id="livrables-attendus" class="section level1" number="5">
+<h1><span class="header-section-number">5</span> 📦 Livrables
+attendus</h1>
+<ul>
+<li><strong>Figures</strong> comparatives prêtes à insérer (bivariés,
+éventuellement ternaires).<br />
+</li>
+<li><strong>Tables</strong> nettoyées (CSV) des jeux
+fusionnés/standardisés.</li>
+</ul>
+</div>
+<div id="reproductibilité-organisation" class="section level1" number="6">
+<h1><span class="header-section-number">6</span> 🔁 Reproductibilité
+&amp; organisation</h1>
+<ul>
+<li>R Markdown unique (ce fichier) servant d’<strong>entrée
+principale</strong>.<br />
+</li>
+<li>Dossiers dédiés à <strong>data/</strong> et
+<strong>outputs/</strong> (figures, tables).</li>
+</ul>
 </div>
 
 

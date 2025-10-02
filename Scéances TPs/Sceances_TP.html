@@ -2688,70 +2688,110 @@ if (window.hljs) {
 
 <style type="text/css">
 body {
-background-color: #fdfdfd;
-color: #333;
-font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+font-family: "Segoe UI", "Inter", sans-serif;
+background: #fdfdfc; 
+color: #333; 
 line-height: 1.6;
-padding: 20px;
+padding: 30px;
+max-width: 1000px;
+margin: auto;
 }
 
 h1, h2, h3 {
-color: #007acc;
-border-bottom: 1px solid #ddd;
-padding-bottom: 5px;
-margin-top: 30px;
+font-weight: 700;
+color: #2c3e50;
+margin-top: 40px;
+margin-bottom: 15px;
+letter-spacing: -0.5px;
+position: relative;
+}
+h1::after {
+content: "";
+display: block;
+width: 80px;
+height: 4px;
+background: linear-gradient(90deg,#00b09b,#96c93d);
+margin-top: 6px;
+border-radius: 2px;
+animation: growBar 1s ease;
+}
+
+p {
+font-size: 16px;
+margin-bottom: 15px;
 }
 
 a {
-color: #007acc;
+color: #0066cc;
 text-decoration: none;
+font-weight: 500;
 }
 a:hover {
 text-decoration: underline;
+color: #004080;
 }
 
-code {
-background-color: #f5f5f5;
-color: #d6336c;
-padding: 2px 6px;
-border-radius: 4px;
-font-family: "Courier New", monospace;
-}
-
-pre {
-background-color: #f5f5f5;
-padding: 10px;
-border-left: 4px solid #007acc;
+pre code {
+display: block;
+background: #f4f6f9;
+border-left: 5px solid #00b09b;
+color: #2c3e50;
+padding: 12px 16px;
+border-radius: 8px;
+font-family: "Fira Code", monospace;
+font-size: 14px;
 overflow-x: auto;
-border-radius: 6px;
+transition: background 0.3s ease;
+}
+pre code:hover {
+background: #eef2f6;
 }
 
 table {
 border-collapse: collapse;
+margin: 20px 0;
+border-radius: 10px;
+overflow: hidden;
 width: 100%;
-margin-top: 20px;
+box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
-th, td {
-border: 1px solid #ccc;
-padding: 8px;
+table th {
+background: #00b09b;
+color: #fff;
 text-align: left;
+padding: 12px;
+font-weight: 600;
 }
-th {
-background-color: #e9f5ff;
-color: #007acc;
+table td {
+background: #fff;
+padding: 10px;
+border-bottom: 1px solid #eee;
 }
-tr:nth-child(even) {
-background-color: #f9f9f9;
+table tr:nth-child(even) td {
+background: #f9f9f9;
 }
 
-::-webkit-scrollbar {
-width: 8px;
+#TOC {
+background: #ffffff;
+border: 1px solid #eee;
+border-radius: 12px;
+padding: 15px;
+box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+font-size: 14px;
+position: sticky;
+top: 20px;
 }
-::-webkit-scrollbar-thumb {
-background-color: #007acc;
-border-radius: 4px;
+#TOC a {
+color: #2c3e50;
 }
-</style>
+#TOC a:hover {
+color: #00b09b;
+}
+
+@keyframes growBar {
+from { width: 0; }
+to { width: 80px; }
+}</style>
 
 
 
@@ -2927,6 +2967,8 @@ border-radius: 0px;
 </div>
 
 
+<div id="tp-0" class="section level1" number="1">
+<h1><span class="header-section-number">1</span> - TP 0</h1>
 <p>Faire une matrice 10x10 de nombres aléatoires suivant une loi normale
 (moyenne=0, écart-type=1). Arrondir les valeurs à 1 chiffre après la
 virgule. Utiliser la fonction <code>set.seed(20)</code> avant de générer
@@ -2946,6 +2988,108 @@ M=matrix(round(rnorm(100),1),nrow=10)</code></pre>
 <pre><code>## NULL</code></pre>
 <pre class="r"><code>dimnames(M)</code></pre>
 <pre><code>## NULL</code></pre>
+<p>La position des nombres par rapport à la virgule indique s’il s’agit
+de lignes ou de colonnes (la première position est la ligne, la deuxième
+la colonne). Par exemple, le nombre à la position (3,5) est le nombre
+situé à la 3ème ligne et à la 5ème colonne.</p>
+<pre class="r"><code>M[4,] # affiche la 4eme ligne de M.</code></pre>
+<pre><code>##  [1] -1.3  1.3  0.4  1.1 -0.4  1.3 -0.9 -0.7  0.1 -0.2</code></pre>
+<pre class="r"><code>M[,5] # affiche la 5eme colonne de M.</code></pre>
+<pre><code>##  [1] -0.8 -1.5  0.6 -0.4 -1.0  0.0  0.9  0.9  1.0 -0.4</code></pre>
+<pre class="r"><code>M[1,4] #affiche l’élément situé à la 1 ligne et 4eme colonne</code></pre>
+<pre><code>## [1] -0.2</code></pre>
+<pre class="r"><code>M[1 :4,]# les 4emes premières lignes de M</code></pre>
+<pre><code>##      [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+## [1,]  1.2  0.0  0.2 -0.2 -0.8  1.1  0.1  0.7 -0.2   2.2
+## [2,] -0.6 -0.2 -0.1  1.6 -1.5  0.0 -0.1 -0.7  1.9  -2.0
+## [3,]  1.8 -0.6  0.7  1.6  0.6  0.2 -0.4  1.0  0.1   0.6
+## [4,] -1.3  1.3  0.4  1.1 -0.4  1.3 -0.9 -0.7  0.1  -0.2</code></pre>
+<pre class="r"><code>M[,1 :4]# les 4emes premières colonnes de M</code></pre>
+<pre><code>##       [,1] [,2] [,3] [,4]
+##  [1,]  1.2  0.0  0.2 -0.2
+##  [2,] -0.6 -0.2 -0.1  1.6
+##  [3,]  1.8 -0.6  0.7  1.6
+##  [4,] -1.3  1.3  0.4  1.1
+##  [5,] -0.4 -1.5 -0.2 -1.1
+##  [6,]  0.6 -0.4 -1.5 -1.9
+##  [7,] -2.9  1.0 -0.6 -0.9
+##  [8,] -0.9  0.0 -1.1  1.2
+##  [9,] -0.5 -0.1 -2.5  0.1
+## [10,] -0.6  0.4 -0.6  0.4</code></pre>
+<pre class="r"><code>M[-4,]# Enlève la 4eme ligne de M.</code></pre>
+<pre><code>##       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+##  [1,]  1.2  0.0  0.2 -0.2 -0.8  1.1  0.1  0.7 -0.2   2.2
+##  [2,] -0.6 -0.2 -0.1  1.6 -1.5  0.0 -0.1 -0.7  1.9  -2.0
+##  [3,]  1.8 -0.6  0.7  1.6  0.6  0.2 -0.4  1.0  0.1   0.6
+##  [4,] -0.4 -1.5 -0.2 -1.1 -1.0  0.7  1.2  1.1  0.2  -0.1
+##  [5,]  0.6 -0.4 -1.5 -1.9  0.0  0.1 -1.7  0.4 -0.6   0.3
+##  [6,] -2.9  1.0 -0.6 -0.9  0.9  1.3  1.2 -0.2  0.0   1.3
+##  [7,] -0.9  0.0 -1.1  1.2  0.9 -0.4 -1.1 -0.5  0.1   1.1
+##  [8,] -0.5 -0.1 -2.5  0.1  1.0 -0.8  0.9 -1.4  1.2  -0.6
+##  [9,] -0.6  0.4 -0.6  0.4 -0.4  0.4 -1.3  0.0  1.4   0.2</code></pre>
+<pre class="r"><code>M[,-5]# Enlève la 5eme colonne de M.</code></pre>
+<pre><code>##       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9]
+##  [1,]  1.2  0.0  0.2 -0.2  1.1  0.1  0.7 -0.2  2.2
+##  [2,] -0.6 -0.2 -0.1  1.6  0.0 -0.1 -0.7  1.9 -2.0
+##  [3,]  1.8 -0.6  0.7  1.6  0.2 -0.4  1.0  0.1  0.6
+##  [4,] -1.3  1.3  0.4  1.1  1.3 -0.9 -0.7  0.1 -0.2
+##  [5,] -0.4 -1.5 -0.2 -1.1  0.7  1.2  1.1  0.2 -0.1
+##  [6,]  0.6 -0.4 -1.5 -1.9  0.1 -1.7  0.4 -0.6  0.3
+##  [7,] -2.9  1.0 -0.6 -0.9  1.3  1.2 -0.2  0.0  1.3
+##  [8,] -0.9  0.0 -1.1  1.2 -0.4 -1.1 -0.5  0.1  1.1
+##  [9,] -0.5 -0.1 -2.5  0.1 -0.8  0.9 -1.4  1.2 -0.6
+## [10,] -0.6  0.4 -0.6  0.4  0.4 -1.3  0.0  1.4  0.2</code></pre>
+<pre class="r"><code>M[c(1 :2,4 :8),]# .....</code></pre>
+<pre><code>##      [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+## [1,]  1.2  0.0  0.2 -0.2 -0.8  1.1  0.1  0.7 -0.2   2.2
+## [2,] -0.6 -0.2 -0.1  1.6 -1.5  0.0 -0.1 -0.7  1.9  -2.0
+## [3,] -1.3  1.3  0.4  1.1 -0.4  1.3 -0.9 -0.7  0.1  -0.2
+## [4,] -0.4 -1.5 -0.2 -1.1 -1.0  0.7  1.2  1.1  0.2  -0.1
+## [5,]  0.6 -0.4 -1.5 -1.9  0.0  0.1 -1.7  0.4 -0.6   0.3
+## [6,] -2.9  1.0 -0.6 -0.9  0.9  1.3  1.2 -0.2  0.0   1.3
+## [7,] -0.9  0.0 -1.1  1.2  0.9 -0.4 -1.1 -0.5  0.1   1.1</code></pre>
+<pre class="r"><code>M[c(1 :2,5),]##</code></pre>
+<pre><code>##      [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+## [1,]  1.2  0.0  0.2 -0.2 -0.8  1.1  0.1  0.7 -0.2   2.2
+## [2,] -0.6 -0.2 -0.1  1.6 -1.5  0.0 -0.1 -0.7  1.9  -2.0
+## [3,] -0.4 -1.5 -0.2 -1.1 -1.0  0.7  1.2  1.1  0.2  -0.1</code></pre>
+<pre class="r"><code>M[-c(1 :2,5),]###</code></pre>
+<pre><code>##      [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+## [1,]  1.8 -0.6  0.7  1.6  0.6  0.2 -0.4  1.0  0.1   0.6
+## [2,] -1.3  1.3  0.4  1.1 -0.4  1.3 -0.9 -0.7  0.1  -0.2
+## [3,]  0.6 -0.4 -1.5 -1.9  0.0  0.1 -1.7  0.4 -0.6   0.3
+## [4,] -2.9  1.0 -0.6 -0.9  0.9  1.3  1.2 -0.2  0.0   1.3
+## [5,] -0.9  0.0 -1.1  1.2  0.9 -0.4 -1.1 -0.5  0.1   1.1
+## [6,] -0.5 -0.1 -2.5  0.1  1.0 -0.8  0.9 -1.4  1.2  -0.6
+## [7,] -0.6  0.4 -0.6  0.4 -0.4  0.4 -1.3  0.0  1.4   0.2</code></pre>
+<p>Création de matrice à partir de vecteurs et de matrices.</p>
+<pre class="r"><code>x=seq(0.5,10, by=0.5)
+y=seq(2,15, length=10)
+M2=cbind( x,y)
+M3=cbind(M2,x)
+z=seq(0,1, length=10)
+M4=cbind(x,y,z)
+
+M5=cbind(M2,M3)
+M6=rbind(x,y)
+M7=rbind(M5,z)</code></pre>
+<pre><code>## Warning in rbind(M5, z): number of columns of result is not a multiple of
+## vector length (arg 2)</code></pre>
+<p>Remarque. Il est possible de créer des vecteurs et matrices contenant
+des lettres, mots,….</p>
+<pre class="r"><code>c(1,&quot;a&quot;,&quot;ddd&quot;)</code></pre>
+<pre><code>## [1] &quot;1&quot;   &quot;a&quot;   &quot;ddd&quot;</code></pre>
+<pre class="r"><code>c(1,&quot;a&quot;,&quot;mon premier fichier R&quot;)</code></pre>
+<pre><code>## [1] &quot;1&quot;                     &quot;a&quot;                     &quot;mon premier fichier R&quot;</code></pre>
+<pre class="r"><code>paste(&quot;a&quot;,1 :2,sep=&quot;&quot;)</code></pre>
+<pre><code>## [1] &quot;a1&quot; &quot;a2&quot;</code></pre>
+<pre class="r"><code>paste(&quot;b&quot;,&quot;a&quot;,1 :4,sep=&quot;&quot;)</code></pre>
+<pre><code>## [1] &quot;ba1&quot; &quot;ba2&quot; &quot;ba3&quot; &quot;ba4&quot;</code></pre>
+<pre class="r"><code>paste(&quot;b&quot;,&quot;a&quot;,1 :3,sep=&quot;.&quot;)</code></pre>
+<pre><code>## [1] &quot;b.a.1&quot; &quot;b.a.2&quot; &quot;b.a.3&quot;</code></pre>
+<pre class="r"><code>paste(&quot;b&quot;,&quot;a&quot;,1 :4,sep=&quot;&quot;)</code></pre>
+<pre><code>## [1] &quot;ba1&quot; &quot;ba2&quot; &quot;ba3&quot; &quot;ba4&quot;</code></pre>
+</div>
 
 
 
