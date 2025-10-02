@@ -1,0 +1,32 @@
+---
+title: "TP 0 — Analyse de données"
+author: "Alexandre Michaux"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: flatly
+    highlight: textmate
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    df_print: paged
+    css: style.css
+---
+
+Faire une matrice 10x10 de nombres aléatoires suivant une loi normale (moyenne=0, écart-type=1). Arrondir les valeurs à 1 chiffre après la virgule. Utiliser la fonction `set.seed(20)` avant de générer les nombres aléatoires pour obtenir toujours la même matrice.
+```{r}
+set.seed(20)
+M=matrix(round(rnorm(100),1),nrow=10)
+```
+
+Afficher la matrice.
+```{r}
+dim(M)
+nrow(M)
+ncol(M)
+names(M)
+rownames(M)
+dimnames(M)
+```
+
