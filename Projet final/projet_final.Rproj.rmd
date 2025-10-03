@@ -49,9 +49,9 @@ Les expériences de fusion partielle et les comparaisons avec des modèles expé
 Avant toute analyse statistique ou cartographique, il faut transformer les fichiers bruts fournis par MESSENGER en un jeu exploitable.
 Le travail consiste à empiler plusieurs couches de données comme dans une lasagne :
 
-	-	chaque couche correspond à une variable (ex. carte globale de Mg/Si),
-	-	toutes les couches doivent être ramenées à la même taille et au même repère spatial (ici 720×1440 en latitude–longitude),
-	-	l’ensemble est ensuite empilé dans un cube de données 3D : latitude × longitude × variable
+-	chaque couche correspond à une variable (ex. carte globale de Mg/Si),
+-	toutes les couches doivent être ramenées à la même taille et au même repère spatial (ici 720×1440 en latitude–longitude),
+-	l’ensemble est ensuite empilé dans un cube de données 3D : latitude × longitude × variable
 
 Ce tableau 3D constitue notre jeu de données consolidé (result_array.rds).
 Il permet ensuite de traverser la lasagne couche par couche (analyse univariée d’un ratio) ou de croiser les couches entre elles (analyse bivariée, cartes comparatives, corrélations).
