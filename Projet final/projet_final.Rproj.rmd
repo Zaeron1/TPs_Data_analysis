@@ -132,6 +132,7 @@ rm(list=ls()[!ls() %in% c("result_array")]) # Supprimer toutes les variables sau
 ```
 
 La fonction ci-dessous permet d'extraire une matrice 2D (une couche) du tableau 3D en fonction de l'index de la couche.
+
 | Index | Layer                        |
 |-------|------------------------------|
 | 1     | alsi.bmp                     |
