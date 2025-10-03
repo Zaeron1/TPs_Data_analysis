@@ -1,0 +1,143 @@
+/* ===== Thème rétro spatial (NASA old reports style) ===== */
+
+/* Corps du document */
+body {
+  background-color: #f5f1e6;   /* beige papier vieilli */
+  color: #2a2a2a;
+  font-family: "Georgia", "Times New Roman", serif;
+  line-height: 1.7;
+  padding: 30px;
+  max-width: 1200px;   /* largeur élargie */
+  margin: auto;
+}
+
+/* Titres avec style "rapport technique" */
+h1, h2, h3 {
+  color: #2d3e50;
+  font-family: "Palatino Linotype", "Book Antiqua", serif;
+  border-bottom: 1px solid #b2a88f;
+  padding-bottom: 4px;
+  margin-top: 40px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+h1 {
+  font-size: 2.2em;
+  text-align: center;
+  margin-bottom: 20px;
+}
+h2 {
+  font-size: 1.6em;
+  color: #3b4d63;
+}
+h3 {
+  font-size: 1.3em;
+  color: #4a5b70;
+}
+
+/* Liens sobres */
+a {
+  color: #4a5b70;
+  text-decoration: underline;
+}
+a:hover {
+  color: #000000;
+}
+
+/* Code inline */
+code {
+  background-color: #f0ece0;
+  color: #2a2a2a;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: "Courier New", monospace;
+  font-size: 0.95em;
+  border: 1px solid #d6d1c4;
+}
+
+/* Blocs de code */
+pre {
+  background-color: #f0ece0;   /* fond rétro clair */
+  color: #2a2a2a;
+  border: 1px solid #d6d1c4;
+  border-radius: 6px;
+  padding: 12px 15px;
+  margin: 20px 0;
+  overflow-x: auto;
+  line-height: 1.5;
+  font-size: 0.95em;
+  font-family: "Courier New", monospace;
+  box-shadow: inset 0 0 6px #e0dbce;
+}
+
+/* Supprimer les séparateurs de lignes */
+pre code {
+  display: block;
+  white-space: pre;
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+/* Tableaux type rapport spatial */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 20px;
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid #c4bca5;
+  padding: 8px;
+  text-align: left;
+}
+th {
+  background-color: #e6e1d5;
+  color: #2a2a2a;
+  font-weight: bold;
+}
+tr:nth-child(even) {
+  background-color: #f9f7f2;
+}
+
+/* TOC façon "dossier technique" */
+#TOC {
+  position: fixed;
+  top: 100px;          /* distance du haut */
+  left: 40px;          /* plus à gauche */
+  max-width: 220px;
+  background: #e6e1d5;
+  border: 1px solid #c4bca5;
+  padding: 10px;
+  border-radius: 6px;
+  z-index: 1000;
+}
+#TOC a {
+  color: #2d3e50;
+}
+#TOC a:hover {
+  color: #000000;
+}
+
+/* Décalage du contenu principal pour éviter chevauchement avec TOC */
+.main-container {
+  margin-left: 280px;
+}
+
+/* Citations */
+blockquote {
+  border-left: 4px solid #b2a88f;
+  padding-left: 12px;
+  color: #4a4a4a;
+  font-style: italic;
+  background: #f9f7f2;
+  margin: 20px 0;
+}
+
+/* Lignes horizontales */
+hr {
+  border: none;
+  border-top: 1px solid #c4bca5;
+  margin: 40px 0;
+}

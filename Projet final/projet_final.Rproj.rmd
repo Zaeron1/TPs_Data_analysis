@@ -1,84 +1,160 @@
 ---
-title: "TP 0 — Analyse de données"
-author: "Alexandre Michaux"
+title: "Projet — Analyse de données"
+author: "Alexandre Michaux & Beniamino Orsini"
 date: "`r Sys.Date()`"
 output:
   html_document:
-    theme: flatly
-    highlight: textmate
+    css: "retro.css"
     toc: true
     toc_float: true
     number_sections: true
-    code_folding: show
+    code_folding: hide   # <-- code caché par défaut, bouton pour afficher
     df_print: paged
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  echo = TRUE,
+  eval = F,
+  fig.align = "center",
+  fig.width = 7,
+  fig.height = 5
+)
+```
 
-<style>
-body {
-  background-color: #fdfdfd;
-  color: #333;
-  font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
-  line-height: 1.6;
-  padding: 20px;
+# Présentation du projet
+
+Ce projet s’inscrit dans le cadre du projet d'analyse de données, consacré à l’étude de la planète Mercure à partir des données orbitales de la mission MESSENGER.
+L’objectif global est de mieux comprendre la composition chimique de la surface mercurienne et ses implications pour la structure interne et l’évolution géologique de la planète.
+
+## La mission MESSENGER
+La mission *MESSENGER (MErcury Surface, Space ENvironment, GEochemistry, and Ranging)*  
+a été lancée par la NASA le 3 août 2004 et mise en orbite autour de Mercure le 18 mars 2011.  
+Elle a fourni, jusqu’à sa fin en avril 2015, un jeu de données sans précédent sur :  
+
+- la géochimie de surface (rapports élémentaires : Mg/Si, Al/Si, Ca/Si, Fe/Si, S/Si)  
+- la morphologie et la topographie (cartes globales et régionales)  
+- le champ magnétique et la magnétosphère de Mercure.
+	
+## Objectifs du projet
+Nous cherchons à analyser les variations régionales des rapports géochimiques de surface afin de répondre à une question centrale : quelles hétérogénéités de composition révèlent l’histoire magmatique et l’évolution du manteau de Mercure ?
+
+Les ratios élémentaires (par exemple Mg/Si ou Al/Si) sont particulièrement importants, car ils renseignent sur la nature de la source mantellique et les processus de fusion qui ont produit les laves observées à la surface.
+
+Dans ce projet, nous nous limitons aux données orbitales de surface fournies par MESSENGER.
+Les expériences de fusion partielle et les comparaisons avec des modèles expérimentaux (haute pression / haute température) ne seront pas encore intégrées à cette étape : l’objectif immédiat est de constituer et d’explorer un jeu de données propre et reproductible basé uniquement sur les cartes globales.
+
+# Préparation des données
+Avant toute analyse statistique ou cartographique, il faut transformer les fichiers bruts fournis par MESSENGER en un jeu exploitable.
+Le travail consiste à empiler plusieurs couches de données comme dans une lasagne :
+
+	-	chaque couche correspond à une variable (ex. carte globale de Mg/Si),
+	-	toutes les couches doivent être ramenées à la même taille et au même repère spatial (ici 720×1440 en latitude–longitude),
+	-	l’ensemble est ensuite empilé dans un cube de données 3D : latitude × longitude × variable
+
+Ce tableau 3D constitue notre jeu de données consolidé (result_array.rds).
+Il permet ensuite de traverser la lasagne couche par couche (analyse univariée d’un ratio) ou de croiser les couches entre elles (analyse bivariée, cartes comparatives, corrélations).
+
+
+```{r}
+rm(list=ls()) # Supprime toutes les variables de l'environnement pour commencer avec un espace de travail vide
+
+packages <- c("plotly", "raster", "bmp", "devtools", "rstudioapi")
+installed_packages <- packages %in% installed.packages()[,"Package"]
+if (any(!installed_packages)) {
+  install.packages(packages[!installed_packages])
 }
-h1, h2, h3 {
-  color: #007acc;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 5px;
+
+library(plotly); library(raster);library(bmp); library(devtools);library(rstudioapi)
+base_path <- dirname(rstudioapi::getSourceEditorContext()$path)
+directory_path <- file.path(base_path, "mercury1440x720")
+result_file <- file.path(base_path, "result_array.rds")
+
+from03602180 <- function(mat) {
+  middle <- dim(mat)[2] / 2
+  mat1 <- mat[, 1:middle]
+  mat2 <- mat[, (middle + 1):(2 * middle)]
+  return(cbind(mat2, mat1))
 }
-a { color: #007acc; text-decoration: none; }
-a:hover { text-decoration: underline; }
-code {
-  background-color: #f5f5f5; color: #d6336c;
-  padding: 2px 6px; border-radius: 4px;
-  font-family: 'Courier New', monospace;
+
+
+#pour des raisons inconnues, la fonctions définies ci-dessous n'a pas pu être chargée dans notre package :/
+process_files_to_3d_array <- function(directory_path, correction_factors, target_dim = c(720, 1440)) {
+  file_list <- list.files(directory_path, full.names = TRUE) # Obtenir la liste des fichiers dans le répertoire
+  n_files <- length(file_list) # Calculer le nombre total de fichiers
+  array_3d <- array(0, dim = c(target_dim[1], target_dim[2], n_files)) # Initialiser un tableau 3D vide avec les dimensions cibles
+  layer_names <- basename(file_list) # Initialiser un vecteur pour stocker les noms des fichiers (couches)
+  apply_correction <- function(matrix, correction_factor) { # Définir une fonction d'aide pour appliquer un facteur de correction
+    if (is.null(correction_factor)) correction_factor <- 1 # Si aucun facteur de correction n'est spécifié, utiliser 1 par défaut
+    matrix * correction_factor # Appliquer le facteur de correction
+  }
+  for (i in seq_along(file_list)) { # Boucle pour traiter chaque fichier
+    file_path <- file_list[i] # Chemin du fichier actuel
+    file_name <- layer_names[i] # Nom du fichier actuel
+    file_extension <- tolower(tools::file_ext(file_name)) # Obtenir l'extension du fichier en minuscules
+    if (file_extension == "bmp") { # Traiter les fichiers BMP
+      bmp_matrix <- read.bmp(file_path) # Lire le fichier BMP
+      corrected_matrix <- apply_correction(bmp_matrix, correction_factors[[file_name]]) # Appliquer la correction
+      array_3d[,,i] <- corrected_matrix # Stocker le résultat dans le tableau 3D
+    } else if (file_extension == "dat") { # Traiter les fichiers DAT
+      data_matrix <- from03602180(as.matrix(read.table(file_path, header = FALSE))) # Lire le fichier DAT
+      array_3d[,,i] <- data_matrix # Stocker le résultat dans le tableau 3D
+    } else if (file_extension == "tif") { # Traiter les fichiers TIF
+      tif_raster <- raster(file_path) # Lire le fichier TIF en tant que raster
+      resize_factor <- c(max(1, ncol(tif_raster) / target_dim[2]), max(1, nrow(tif_raster) / target_dim[1])) # Calculer le facteur de redimensionnement
+      resized_raster <- aggregate(tif_raster, fact = resize_factor) # Redimensionner le raster
+      resized_matrix <- as.matrix(resized_raster, ncol = target_dim[2], nrow = target_dim[1]) # Convertir le raster redimensionné en matrice
+      array_3d[,,i] <- resized_matrix * 0.5 # Stocker le résultat dans le tableau 3D après correction
+    } else if (file_extension == "csv") { # Traiter les fichiers CSV
+      lines <- gsub(",\\s+", ",", gsub("(\\d)\\s+(\\d)", "\\1,\\2", readLines(file_path))) # Nettoyer les lignes du fichier CSV
+      temp_file <- tempfile(fileext = ".csv") # Créer un fichier temporaire pour le CSV nettoyé
+      writeLines(lines, temp_file) # Écrire les lignes nettoyées dans le fichier temporaire
+      donnees <- read.csv(temp_file, header = FALSE) # Lire le fichier CSV temporaire
+      matrix_csv <- from03602180(as.matrix(donnees[,-1])) # Convertir les données en matrice
+      array_3d[,,i] <- matrix_csv # Stocker le résultat dans le tableau 3D
+      unlink(temp_file) # Supprimer le fichier temporaire
+    } else {
+      warning(paste("File type not supported:", file_extension, "for file", file_name)) # Avertir si le type de fichier n'est pas supporté
+    }
+  }
+  layer_info <- data.frame(Index = seq_along(layer_names), Layer = layer_names) # Créer un tableau de données avec les indices et noms des couches
+  #print(layer_info) # Afficher les informations des couches
+  return(array_3d) # Retourner le tableau 3D
 }
-pre {
-  background-color: #f5f5f5; padding: 10px;
-  border-left: 4px solid #007acc; overflow-x: auto; border-radius: 6px;
+
+correction_factors <- list("mgsi.bmp" = 0.860023 / 255.0, "alsi.bmp" = 0.402477 / 255.0, "ssi.bmp" = 0.161680 / 255.0, "fesi.bmp" = 0.117737 / 255.0, "casi.bmp" = (0.318000/255.0)) # Facteurs de correction pour les fichiers BMP
+result_array <- process_files_to_3d_array(directory_path, correction_factors) # Appeler la fonction pour traiter les fichiers et obtenir le tableau 3D
+# IMPORTANT: le tableau généré dans la console renseigne les index qu'il faut utiliser dans les prochaines fonctions poru extraire les bonnes matrices du 3D array
+saveRDS(result_array, file = result_file) # Sauvegarder le tableau 3D dans un fichier RDS
+#result_array <- readRDS(result_file) # Lire le tableau 3D depuis le fichier RDS
+rm(list=ls()[!ls() %in% c("result_array")]) # Supprimer toutes les variables sauf le tableau 3D
+```
+
+La fonction ci-dessous permet d'extraire une matrice 2D (une couche) du tableau 3D en fonction de l'index de la couche.
+| Index | Layer                        |
+|-------|------------------------------|
+| 1     | alsi.bmp                     |
+| 2     | casi.bmp                     |
+| 3     | CrustalThickness_ModelV1.csv |
+| 4     | DEM.tif                      |
+| 5     | DensityGrid.dat              |
+| 6     | fesi.bmp                     |
+| 7     | MeltGrid.dat                 |
+| 8     | mgsi.bmp                     |
+| 9     | ssi.bmp                      |
+| 10    | subregions_Nittler_Vflip.bmp |
+
+```{r}
+get_layer_as_matrix <- function(result_array, layer_index) {
+
+  if (layer_index < 1 || layer_index > dim(result_array)[3]) { #check si l'index est inf. à 1 (index minimum) ou si il est sup. au nombre de couche de result_array
+    stop("Layer index out of bounds.")
+  }
+  return(result_array[,,layer_index])   # Extrait et retourne la couche spécifiée sous forme de matrice
 }
-table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-th { background-color: #e9f5ff; color: #007acc; }
-tr:nth-child(even) { background-color: #f9f9f9; }
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-thumb { background: #007acc; border-radius: 4px; }
-</style>
 
-# 📘 Présentation du projet
-
-Ce **TP 0** pose le cadre du projet d’**analyse de données** fondé sur les mêmes jeux que mon **TFB** sur **Mercure**.  
-Nous exploiterons (i) des **données expérimentales** de fusion partielle (*Mer8* et *Mer15* ; oxydes majeurs en wt %), et (ii) des **cartes MESSENGER** (ratios géochimiques par régions).  
-L’objectif global est de **mettre en regard** les compositions de surface (MESSENGER) et les **fusions expérimentales** (Mer8/Mer15) pour **inférer les conditions** de genèse (pression, profondeur, éventuelle teneur en eau) des laves sources.  
-Le livrable final visé est un **socle reproductible** (R Markdown) permettant, à partir de ces données, de produire des **figures comparatives** (bivariées/ternaires) et des **tables propres** prêtes à être intégrées au mémoire.
-
-> En pratique, ce document servira d’« épine dorsale » : on y structurera le chargement des jeux de données, leur harmonisation (noms/units), la préparation de ratios **molyaires clefs** (Mg/Si, Al/Si, Ca/Si), et l’esquisse des graphes nécessaires à l’interprétation **expériences ↔ surface**.
-
-# 🎯 Objectifs (vue d’ensemble)
-
-- Définir une **structure claire** pour charger et décrire les données (Mer8, Mer15, MESSENGER).  
-- Préparer un **pipeline reproductible** (sans entrer ici dans le code) pour obtenir des sorties **cohérentes** (ratios, figures, exports).  
-- Poser la **question scientifique** directrice : *quelles conditions de fusion partielle reproduisent le mieux les compositions de surface de Mercure ?*
-
-# 🗂️ Données (références rapides)
-
-- **Expériences** : Mer8, Mer15 (oxydes majeurs en wt %).  
-- **Observations** : MESSENGER (ratios régionaux et/ou oxydes agrégés).  
-
-# 🧭 Méthodologie (schéma prévu)
-
-- Harmonisation des colonnes, unités, métadonnées.  
-- Calcul/validation des **ratios molaires** (Mg/Si, Al/Si, Ca/Si).  
-- Comparaisons visuelles (bivariés/ternaires) **Expériences ↔ MESSENGER**.  
-
-# 📦 Livrables attendus
-
-- **Figures** comparatives prêtes à insérer (bivariés, éventuellement ternaires).  
-- **Tables** nettoyées (CSV) des jeux fusionnés/standardisés.  
-
-# 🔁 Reproductibilité & organisation
-
-- R Markdown unique (ce fichier) servant d’**entrée principale**.  
-- Dossiers dédiés à **data/** et **outputs/** (figures, tables).  
+layer_matrix <- get_layer_as_matrix(result_array, 2) 
+```
 
 
