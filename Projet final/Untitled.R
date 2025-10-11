@@ -108,11 +108,11 @@ correction_factors <- list(
   "ssi.bmp"     = 0.161680 / 255.0,
   "fesi.bmp"    = 0.117737 / 255.0,
   "casi.bmp"    = 0.318000 / 255.0,
-  "mgsierr.png" = 0.860023 / 255.0,
-  "alsierr.png" = 0.402477 / 255.0,
-  "ssierr.png"  = 0.161680 / 255.0,
-  "fesierr.png" = 0.117737 / 255.0,
-  "casierr.png" = 0.318000 / 255.0
+  "mgsierr.png" = 0.223226 / 255.0,
+  "alsierr.png" = 0.153596 / 255.0,
+  "ssierr.png"  = 0.0398775 / 255.0,
+  "fesierr.png" = 0.0283532 / 255.0,
+  "casierr.png" = 0.0809775 / 255.0
 )
 
 # ==================== CONSTRUCTION DU CUBE ====================
@@ -166,7 +166,7 @@ print(layer_info)
 saveRDS(result_array_full, file = result_file)
 cat("\n💾 Sauvegardé :", result_file, "\n")
 
-
+result_array_full[result_array_full == 0 | abs(result_array_full) < 1e-10] <- NA_real_
 #nombre de NA dans chaque couche
 na_counts <- sapply(1:dim(result_array_full)[3], function(i) sum(is.na(result_array_full[,,i])))
 layer_info <- data.frame(Index = seq_along(attr(result_array_full, "layer_names")), Layer = attr(result_array_full, "layer_names"), NA_Count = na_counts)
@@ -184,6 +184,96 @@ get_layer_as_matrix <- function(result_array_full, layer_index) {
 
 
 
+# ==================== CALCUL DES CARTES DE PRESSION ET DE FUSION ====================
+
+library(plotly)
+
+# --- 1. Chargement des données expérimentales Mer8 et Mer15 ---
+mer8_path  <- "/Users/alexandremichaux/Documents/UCA/Cours/Analyse des données/TP/TPs/Projet final/data/data_Mer8.csv"
+mer15_path <- "/Users/alexandremichaux/Documents/UCA/Cours/Analyse des données/TP/TPs/Projet final/data/data_Mer15.csv"
+
+data_Mer8  <- read.csv(mer8_path,  sep = ",", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
+data_Mer15 <- read.csv(mer15_path, sep = ",", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
+
+# Combiner les deux jeux expérimentaux
+exp_data <- rbind(data_Mer8, data_Mer15)
+exp_data <- exp_data[complete.cases(exp_data[, c("Mg/Si","Al/Si","Ca/Si","Fe/Si","S/Si")]), ]
+
+# --- 2. Extraction des couches masquées depuis result_array_full ---
+maps <- list(
+  MgSi     = get_layer_as_matrix(result_array_full, 24),
+  MgSi_err = get_layer_as_matrix(result_array_full, 25),
+  AlSi     = get_layer_as_matrix(result_array_full, 15),
+  AlSi_err = get_layer_as_matrix(result_array_full, 16),
+  CaSi     = get_layer_as_matrix(result_array_full, 17),
+  CaSi_err = get_layer_as_matrix(result_array_full, 18),
+  FeSi     = get_layer_as_matrix(result_array_full, 21),
+  FeSi_err = get_layer_as_matrix(result_array_full, 22),
+  SSi      = get_layer_as_matrix(result_array_full, 26),
+  SSi_err  = get_layer_as_matrix(result_array_full, 27)
+)
+
+nx <- nrow(maps$MgSi)
+ny <- ncol(maps$MgSi)
+
+# --- 3. Matrices vides pour Pression et F ---
+pressure_map <- matrix(NA, nrow = nx, ncol = ny)
+fusion_map   <- matrix(NA, nrow = nx, ncol = ny)
+
+# --- 4. Fonction de calcul du résidu pondéré ---
+compute_residual <- function(M, sigma, E) {
+  valid <- !is.na(M) & !is.na(sigma)
+  if (sum(valid) < 3) return(NA)
+  sqrt(sum(((M[valid] - E[valid]) / sigma[valid])^2))
+}
+
+# --- 5. Boucle principale : minimisation du résidu pondéré ---
+pb <- txtProgressBar(min = 0, max = nx, style = 3)
+
+for (x in 1:nx) {
+  for (y in 1:ny) {
+    M <- c(maps$MgSi[x,y], maps$AlSi[x,y], maps$CaSi[x,y],
+           maps$FeSi[x,y], maps$SSi[x,y])
+    sigma <- c(maps$MgSi_err[x,y], maps$AlSi_err[x,y], maps$CaSi_err[x,y],
+               maps$FeSi_err[x,y], maps$SSi_err[x,y])
+    if (all(is.na(M))) next
+    
+    residuals <- apply(exp_data[, c("Mg/Si","Al/Si","Ca/Si","Fe/Si","S/Si")], 1, function(E){
+      compute_residual(M, sigma, E)
+    })
+    
+    best_index <- which.min(residuals)
+    if (is.na(best_index)) next
+    
+    pressure_map[x,y] <- exp_data$Pression[best_index]
+    fusion_map[x,y]   <- exp_data$F[best_index]
+  }
+  setTxtProgressBar(pb, x)
+}
+close(pb)
+
+lst <- list(
+  pressure_map = pressure_map,
+  fusion_map = fusion_map
+)
+
+for (name in lst) {
+  image(
+    z = t(apply(name, 2, rev)),   # rotation correcte pour l'affichage
+    col = terrain.colors(100),
+    main = "",
+    axes = T,
+    xlab = "Longitude",
+    ylab = "Latitude"
+    
+  )}
+
+# --- 7. Sauvegarde des résultats ---
+saveRDS(pressure_map, file.path(base_path, "pressure_map_masked_weighted.rds"))
+saveRDS(fusion_map,   file.path(base_path, "fusion_map_masked_weighted.rds"))
+cat("\n✅ Cartes de pression et de fusion pondérées sauvegardées.\n")
+
+
+
+rexplqiue bien le calcul
   
-
-
