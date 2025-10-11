@@ -1,5 +1,5 @@
 ---
-title: "Projet — Analyse de données"
+title: "Analyse géocimique de la surface de Mercure à partir des données MESSENGER"
 author: "Alexandre Michaux & Beniamino Orsini"
 date: "`r Sys.Date()`"
 output:
@@ -36,6 +36,8 @@ Elle a fourni, jusqu’à sa fin en avril 2015, un jeu de données sans précéd
 - la géochimie de surface (rapports élémentaires : Mg/Si, Al/Si, Ca/Si, Fe/Si, S/Si)  
 - la morphologie et la topographie (cartes globales et régionales)  
 - le champ magnétique et la magnétosphère de Mercure.
+
+Les données utilisées dans ce projet proviennent principalement de l’instrument XRS (X-Ray Spectrometer) pour la géochimie et de l’instrument MLA (Mercury Laser Altimeter) pour la topographie fournie par la publication de [Nittler *et al.* (2020)](#nittler2020).
 	
 ## Objectifs du projet
 Nous cherchons à analyser les variations régionales des rapports géochimiques de surface afin de répondre à une question centrale : quelles hétérogénéités de composition révèlent l’histoire magmatique et l’évolution du manteau de Mercure ?
@@ -155,7 +157,17 @@ get_layer_as_matrix <- function(result_array, layer_index) {
   return(result_array[,,layer_index])   # Extrait et retourne la couche spécifiée sous forme de matrice
 }
 
-layer_matrix <- get_layer_as_matrix(result_array, 2) 
+layer_al <- get_layer_as_matrix(result_array, 1) 
 ```
+
+
+
+
+
+<a id="nittler2020"></a>
+Nittler, L.R., Frank, E.A., Weider, S.Z., Crapster-Pregont, E., Vorburger, A., Starr, R.D. &
+Solomon, S.C., 2020. global major-element maps of Mercury from four years of MESSENGER
+X-Ray Spectrometer observations. Icarus, 345, 113716. https://doi.org/10.1016/j.icarus.2020.113716.
+
 
 
