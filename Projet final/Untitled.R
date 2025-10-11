@@ -1,65 +1,3 @@
----
-title: "Analyse géocimique de la surface de Mercure à partir des données MESSENGER"
-author: "Alexandre Michaux & Beniamino Orsini"
-date: "`r Sys.Date()`"
-output:
-  html_document:
-    css: "retro.css"
-    toc: true
-    toc_float: true
-    number_sections: true
-    code_folding: hide   # <-- code caché par défaut, bouton pour afficher
-    df_print: paged
----
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  message = FALSE,
-  warning = FALSE,
-  echo = TRUE,
-  eval = T,
-  fig.align = "center",
-  fig.width = 7,
-  fig.height = 5
-)
-```
-
-# Présentation du projet
-
-Ce projet s’inscrit dans le cadre du projet d'analyse de données, consacré à l’étude de la planète Mercure à partir des données orbitales de la mission MESSENGER.
-L’objectif global est de mieux comprendre la composition chimique de la surface mercurienne et ses implications pour la structure interne et l’évolution géologique de la planète.
-
-## La mission MESSENGER
-La mission *MESSENGER (MErcury Surface, Space ENvironment, GEochemistry, and Ranging)*  
-a été lancée par la NASA le 3 août 2004 et mise en orbite autour de Mercure le 18 mars 2011.  
-Elle a fourni, jusqu’à sa fin en avril 2015, un jeu de données sans précédent sur :  
-
-- la géochimie de surface (rapports élémentaires : Mg/Si, Al/Si, Ca/Si, Fe/Si, S/Si)  
-- la morphologie et la topographie (cartes globales et régionales)  
-- le champ magnétique et la magnétosphère de Mercure.
-
-Les données utilisées dans ce projet proviennent principalement de l’instrument XRS (X-Ray Spectrometer) pour la géochimie et de l’instrument MLA (Mercury Laser Altimeter) pour la topographie fournie par la publication de [Nittler *et al.* (2020)](#nittler2020).
-	
-## Objectifs du projet
-Nous cherchons à analyser les variations régionales des rapports géochimiques de surface afin de répondre à une question centrale : quelles hétérogénéités de composition révèlent l’histoire magmatique et l’évolution du manteau de Mercure ?
-
-Les ratios élémentaires (par exemple Mg/Si ou Al/Si) sont particulièrement importants, car ils renseignent sur la nature de la source mantellique et les processus de fusion qui ont produit les laves observées à la surface.
-
-Dans ce projet, nous nous limitons aux données orbitales de surface fournies par MESSENGER.
-Les expériences de fusion partielle et les comparaisons avec des modèles expérimentaux (haute pression / haute température) ne seront pas encore intégrées à cette étape : l’objectif immédiat est de constituer et d’explorer un jeu de données propre et reproductible basé uniquement sur les cartes globales.
-
-# Préparation des données
-Avant toute analyse statistique ou cartographique, il faut transformer les fichiers bruts fournis par MESSENGER en un jeu exploitable.
-Le travail consiste à empiler plusieurs couches de données comme dans une lasagne :
-
--	chaque couche correspond à une variable (ex. carte globale de Mg/Si),
--	toutes les couches doivent être ramenées à la même taille et au même repère spatial (ici 720×1440 en latitude–longitude),
--	l’ensemble est ensuite empilé dans un cube de données 3D : latitude × longitude × variable
-
-Ce tableau 3D constitue notre jeu de données consolidé (result_array.rds).
-Il permet ensuite de traverser la lasagne couche par couche (analyse univariée d’un ratio) ou de croiser les couches entre elles (analyse bivariée, cartes comparatives, corrélations).
-
-
-```{r}
 rm(list=ls())
 
 # ==================== PACKAGES ====================
@@ -228,73 +166,24 @@ print(layer_info)
 saveRDS(result_array_full, file = result_file)
 cat("\n💾 Sauvegardé :", result_file, "\n")
 
-result_array_full[result_array_full == 0 | abs(result_array_full) < 1e-10] <- NA_real_
+
 #nombre de NA dans chaque couche
 na_counts <- sapply(1:dim(result_array_full)[3], function(i) sum(is.na(result_array_full[,,i])))
 layer_info <- data.frame(Index = seq_along(attr(result_array_full, "layer_names")), Layer = attr(result_array_full, "layer_names"), NA_Count = na_counts)
 print(layer_info) # Afficher les informations des couches avec le nombre de
 
-```
 
-La fonction ci-dessous permet d'extraire une matrice 2D (une couche) du tableau 3D en fonction de l'index de la couche.
 
-| Index | Layer                        |
-|-------|------------------------------|
-| 1     | alsi.bmp                     |
-| 2     | casi.bmp                     |
-| 3     | CrustalThickness_ModelV1.csv |
-| 4     | DEM.tif                      |
-| 5     | DensityGrid.dat              |
-| 6     | fesi.bmp                     |
-| 7     | MeltGrid.dat                 |
-| 8     | mgsi.bmp                     |
-| 9     | ssi.bmp                      |
-| 10    | subregions_Nittler_Vflip.bmp |
-
-```{r}
-get_layer_as_matrix <- function(result_array, layer_index) {
-
-  if (layer_index < 1 || layer_index > dim(result_array)[3]) { #check si l'index est inf. à 1 (index minimum) ou si il est sup. au nombre de couche de result_array
+get_layer_as_matrix <- function(result_array_full, layer_index) {
+  
+  if (layer_index < 1 || layer_index > dim(result_array_full)[3]) { #check si l'index est inf. à 1 (index minimum) ou si il est sup. au nombre de couche de result_array
     stop("Layer index out of bounds.")
   }
-  return(result_array[,,layer_index])   # Extrait et retourne la couche spécifiée sous forme de matrice
+  return(result_array_full[,,layer_index])   # Extrait et retourne la couche spécifiée sous forme de matrice
 }
 
-for (i in 1:28){
-layer_matrix <- get_layer_as_matrix(result_array_full, i)
-
-image(
-  z = t(apply(layer_matrix, 2, rev)),   # rotation correcte pour l'affichage
-  col = terrain.colors(100),
-  main = paste("Couche", i),
-  axes = FALSE
-)}
 
 
-```
-
-
-
-
-
-```{r}
-
-```
-
-
-
-
-
-
-
-
-
-
-
-<a id="nittler2020"></a>
-Nittler, L.R., Frank, E.A., Weider, S.Z., Crapster-Pregont, E., Vorburger, A., Starr, R.D. &
-Solomon, S.C., 2020. global major-element maps of Mercury from four years of MESSENGER
-X-Ray Spectrometer observations. Icarus, 345, 113716. https://doi.org/10.1016/j.icarus.2020.113716.
-
+  
 
 
