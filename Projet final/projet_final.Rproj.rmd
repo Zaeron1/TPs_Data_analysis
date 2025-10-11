@@ -15,7 +15,7 @@ output:
 knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE,
-  echo = TRUE,
+  echo = FALSE,
   eval = T,
   fig.align = "center",
   fig.width = 7,
@@ -25,45 +25,56 @@ knitr::opts_chunk$set(
 
 # Présentation du projet
 
-Ce projet s’inscrit dans le cadre du projet d'analyse de données, consacré à l’étude de la planète Mercure à partir des données orbitales de la mission MESSENGER.
-L’objectif global est de mieux comprendre la composition chimique de la surface mercurienne et ses implications pour la structure interne et l’évolution géologique de la planète.
+Ce projet s’inscrit dans le cadre du module d’analyse de données et vise à étudier la **composition géochimique de la surface de Mercure** à partir des données orbitales issues de la mission **MESSENGER**.  
+L’objectif global est de relier les **hétérogénéités chimiques de surface** à l’**histoire magmatique** et à l’**évolution interne** de la planète.
 
 ## La mission MESSENGER
-La mission *MESSENGER (MErcury Surface, Space ENvironment, GEochemistry, and Ranging)*  
-a été lancée par la NASA le 3 août 2004 et mise en orbite autour de Mercure le 18 mars 2011.  
-Elle a fourni, jusqu’à sa fin en avril 2015, un jeu de données sans précédent sur :  
 
-- la géochimie de surface (rapports élémentaires : Mg/Si, Al/Si, Ca/Si, Fe/Si, S/Si)  
-- la morphologie et la topographie (cartes globales et régionales)  
-- le champ magnétique et la magnétosphère de Mercure.
+La mission *MESSENGER (MErcury Surface, Space ENvironment, GEochemistry, and Ranging)*, lancée par la NASA en 2004 et mise en orbite autour de Mercure en mars 2011, a fourni jusqu’à 2015 un ensemble complet de données sur la géochimie, la topographie et le champ magnétique de la planète.  
+Les données utilisées ici proviennent principalement de deux instruments :
+
+- **XRS (X-Ray Spectrometer)** : mesure des rapports élémentaires de surface (Mg/Si, Al/Si, Ca/Si, Fe/Si, S/Si).  
+- **MLA (Mercury Laser Altimeter)** : mesure de la topographie et de l’altitude absolue des terrains.
+
+Ces informations permettent de produire des **cartes globales de composition chimique**, représentatives des terrains volcaniques et de l’évolution du manteau mercurien.
 
 Les données utilisées dans ce projet proviennent principalement de l’instrument XRS (X-Ray Spectrometer) pour la géochimie et de l’instrument MLA (Mercury Laser Altimeter) pour la topographie fournie par la publication de [Nittler *et al.* (2020)](#nittler2020).
 	
 ## Objectifs du projet
-Nous cherchons à analyser les variations régionales des rapports géochimiques de surface afin de répondre à une question centrale : quelles hétérogénéités de composition révèlent l’histoire magmatique et l’évolution du manteau de Mercure ?
 
-Les ratios élémentaires (par exemple Mg/Si ou Al/Si) sont particulièrement importants, car ils renseignent sur la nature de la source mantellique et les processus de fusion qui ont produit les laves observées à la surface.
+Le but de ce travail est double :
 
-Dans ce projet, nous nous limitons aux données orbitales de surface fournies par MESSENGER.
-Les expériences de fusion partielle et les comparaisons avec des modèles expérimentaux (haute pression / haute température) ne seront pas encore intégrées à cette étape : l’objectif immédiat est de constituer et d’explorer un jeu de données propre et reproductible basé uniquement sur les cartes globales.
+1. **Consolider les données MESSENGER** pour obtenir un cube global (latitude × longitude × variable) représentant les principaux rapports géochimiques de la surface de Mercure.
+2. **Comparer ces compositions orbitales** à des **expériences de fusion partielle** réalisées en laboratoire (séries Mer8 et Mer15) afin d’en déduire des **cartes globales de pression de fusion** et de **taux de fusion partielle (F)**.
+3. Etablir un jeu de données statistiques et cartographiques complet, permettant d’étudier les relations entre composition chimique, topographie.
 
-# Préparation des données
-Avant toute analyse statistique ou cartographique, il faut transformer les fichiers bruts fournis par MESSENGER en un jeu exploitable.
-Le travail consiste à empiler plusieurs couches de données comme dans une lasagne :
+Cette approche permet de relier chaque pixel de la surface mercurienne à des conditions expérimentales de fusion, et donc à des profondeurs ou degrés de fusion du manteau.
 
--	chaque couche correspond à une variable (ex. carte globale de Mg/Si),
--	toutes les couches doivent être ramenées à la même taille et au même repère spatial (ici 720×1440 en latitude–longitude),
--	l’ensemble est ensuite empilé dans un cube de données 3D : latitude × longitude × variable
+# Préparation et traitement des données
 
-Ce tableau 3D constitue notre jeu de données consolidé (result_array.rds).
-Il permet ensuite de traverser la lasagne couche par couche (analyse univariée d’un ratio) ou de croiser les couches entre elles (analyse bivariée, cartes comparatives, corrélations).
+Les données brutes sont constituées de plusieurs fichiers de formats variés (`.bmp`, `.png`, `.dat`, `.rds`), chacun représentant une variable géochimique ou géophysique.  
+Avant toute analyse, ces couches sont **uniformisées** et **empilées** dans un **cube tridimensionnel** (latitude × longitude × variable).  
+Chaque couche correspond à une carte globale : par exemple, les rapports **Mg/Si**, **Al/Si**, **Ca/Si**, **Fe/Si** et **S/Si**.
+
+Les étapes principales sont les suivantes :
+
+1. **Chargement automatique** des fichiers présents dans le dossier `data/`, avec lecture adaptée selon le format.  
+2. **Application de facteurs de correction** pour convertir les intensités (valeurs 0–255 des BMP/PNG) en valeurs normalisées de rapport élémentaire.  
+3. **Redimensionnement** de toutes les couches à une grille uniforme de **720 × 1440 pixels** (résolution latitude–longitude).  
+4. **Création d’un masque commun** éliminant les pixels invalides (valeurs nulles ou < 0.0001).  
+5. **Empilement final** des couches corrigées et masquées dans un objet 3D `result_array_full`, sauvegardé au format `.rds`.
+
+Le code effectue ensuite un contrôle statistique du cube (nombre de pixels valides, distribution des valeurs) et permet une visualisation rapide de chaque couche via la fonction `image()`, dont le titre correspond automatiquement au nom du fichier source.
+
+
+
 
 
 ```{r}
 rm(list=ls())
 
 # ==================== PACKAGES ====================
-packages <- c("raster","bmp","png","rstudioapi","abind")
+packages <- c("raster","bmp","png","rstudioapi","abind","plotly")
 installed_packages <- packages %in% installed.packages()[,"Package"]
 if (any(!installed_packages)) install.packages(packages[!installed_packages])
 lapply(packages, library, character.only = TRUE)
@@ -170,11 +181,11 @@ correction_factors <- list(
   "ssi.bmp"     = 0.161680 / 255.0,
   "fesi.bmp"    = 0.117737 / 255.0,
   "casi.bmp"    = 0.318000 / 255.0,
-  "mgsierr.png" = 0.860023 / 255.0,
-  "alsierr.png" = 0.402477 / 255.0,
-  "ssierr.png"  = 0.161680 / 255.0,
-  "fesierr.png" = 0.117737 / 255.0,
-  "casierr.png" = 0.318000 / 255.0
+  "mgsierr.png" = 0.223226 / 255.0,
+  "alsierr.png" = 0.153596 / 255.0,
+  "ssierr.png"  = 0.0398775 / 255.0,
+  "fesierr.png" = 0.0283532 / 255.0,
+  "casierr.png" = 0.0809775 / 255.0
 )
 
 # ==================== CONSTRUCTION DU CUBE ====================
@@ -236,20 +247,7 @@ print(layer_info) # Afficher les informations des couches avec le nombre de
 
 ```
 
-La fonction ci-dessous permet d'extraire une matrice 2D (une couche) du tableau 3D en fonction de l'index de la couche.
-
-| Index | Layer                        |
-|-------|------------------------------|
-| 1     | alsi.bmp                     |
-| 2     | casi.bmp                     |
-| 3     | CrustalThickness_ModelV1.csv |
-| 4     | DEM.tif                      |
-| 5     | DensityGrid.dat              |
-| 6     | fesi.bmp                     |
-| 7     | MeltGrid.dat                 |
-| 8     | mgsi.bmp                     |
-| 9     | ssi.bmp                      |
-| 10    | subregions_Nittler_Vflip.bmp |
+La fonction ci-dessous permet d'extraire une matrice 2D (une couche) du tableau 3D en fonction de l'index de la couche et de potentiellement l'afficher.
 
 ```{r}
 get_layer_as_matrix <- function(result_array, layer_index) {
@@ -260,29 +258,36 @@ get_layer_as_matrix <- function(result_array, layer_index) {
   return(result_array[,,layer_index])   # Extrait et retourne la couche spécifiée sous forme de matrice
 }
 
-for (i in 1:28){
-layer_matrix <- get_layer_as_matrix(result_array_full, i)
-
-image(
-  z = t(apply(layer_matrix, 2, rev)),   # rotation correcte pour l'affichage
-  col = terrain.colors(100),
-  main = paste("Couche", i),
-  axes = FALSE
-)}
-
-
+# Boucle d'affichage avec titre = nom du fichier
+for (i in seq_along(layer_names)) {
+  layer_matrix <- get_layer_as_matrix(result_array_full, i)
+  
+  image(
+    z = t(apply(layer_matrix, 2, rev)),   # rotation correcte pour l'affichage
+    col = terrain.colors(100),
+    main = paste("Couche", i, "-", layer_names[i]),  # Titre avec nom de fichier
+    axes = FALSE,
+    xlab = "Longitude",
+    ylab = "Latitude"
+  )
+}
 ```
 
+## Intégration des données expérimentales
 
+Pour relier les compositions observées à la surface de Mercure à des conditions physiques (pression, température, taux de fusion partielle), deux jeux de données expérimentales sont utilisés :
 
-Calcul de résidu en corrélation avec les expéreiences de fusion partielle....
+- **Mer8** et **Mer15**, correspondant à deux compositions de départ différentes du manteau mercurien.  
+  Ces expériences de fusion partielle ont été conduites à des pressions de **1.5, 3 et 5 GPa** et des températures comprises entre **1475°C et 1700°C**.
+
+Chaque ligne de ces fichiers (`data_Mer8.csv`, `data_Mer15.csv`) contient :
+- la pression expérimentale,
+- le taux de fusion partielle (F),
+- et les rapports chimiques correspondants (Mg/Si, Al/Si, Ca/Si, Fe/Si, S/Si).
+
+Les deux séries sont combinées pour constituer un ensemble de référence unique (`exp_data`), utilisé pour comparer les compositions de surface pixel par pixel.
 
 ```{r}
-# ==================== CALCUL DES CARTES DE PRESSION ET DE FUSION ====================
-
-library(plotly)
-
-# --- 1. Chargement des données expérimentales Mer8 et Mer15 ---
 mer8_path  <- "/Users/alexandremichaux/Documents/UCA/Cours/Analyse des données/TP/TPs/Projet final/data/data_Mer8.csv"
 mer15_path <- "/Users/alexandremichaux/Documents/UCA/Cours/Analyse des données/TP/TPs/Projet final/data/data_Mer15.csv"
 
@@ -292,8 +297,99 @@ data_Mer15 <- read.csv(mer15_path, sep = ",", header = TRUE, check.names = FALSE
 # Combiner les deux jeux expérimentaux
 exp_data <- rbind(data_Mer8, data_Mer15)
 exp_data <- exp_data[complete.cases(exp_data[, c("Mg/Si","Al/Si","Ca/Si","Fe/Si","S/Si")]), ]
+```
 
-# --- 2. Extraction des couches masquées depuis result_array_full ---
+
+## Méthode de corrélation géochimique
+
+L’objectif est d’associer chaque pixel de Mercure à la **condition expérimentale la plus proche** parmi les données Mer8/Mer15.  
+Pour cela, on calcule pour chaque pixel un **résidu pondéré** mesurant la différence entre la composition observée et la composition expérimentale.
+
+---
+
+### Calcul du résidu pondéré
+
+Pour chaque pixel $(x, y)$, on définit un **vecteur de mesures** :
+
+\[
+\mathbf{M}(x, y) = 
+\begin{pmatrix}
+\mathrm{Mg/Si} \\
+\mathrm{Al/Si} \\
+\mathrm{Ca/Si} \\
+\mathrm{Fe/Si} \\
+\mathrm{S/Si}
+\end{pmatrix}
+\]
+
+et les **incertitudes correspondantes** :
+
+\[
+\boldsymbol{\sigma} = 
+\begin{pmatrix}
+\sigma_{\mathrm{Mg/Si}} \\
+\sigma_{\mathrm{Al/Si}} \\
+\sigma_{\mathrm{Ca/Si}} \\
+\sigma_{\mathrm{Fe/Si}} \\
+\sigma_{\mathrm{S/Si}}
+\end{pmatrix}
+\]
+
+Pour chaque expérience $E_i$ du jeu **Mer8/Mer15**, on calcule le **résidu pondéré** :
+
+\[
+R_i = 
+\sqrt{
+\sum_{k=1}^{5}
+\left(
+\frac{M_k - E_{i,k}}{\sigma_k}
+\right)^2
+}
+\]
+
+où :
+- $M_k$ est la valeur mesurée pour le rapport élémentaire $k$,
+- $E_{i,k}$ la valeur correspondante issue de l’expérience $i$,
+- $\sigma_k$ l’incertitude associée à la mesure $M_k$.
+
+---
+
+### Sélection de la condition optimale
+
+Le **résidu minimal** est défini par :
+
+\[
+R_{\min}(x, y) = \min_i R_i(x, y)
+\]
+
+L’expérience $E_i$ associée à $R_{\min}$ correspond à la **condition expérimentale la plus proche**, d’où l’on déduit :
+ 
+- la **pression de fusion partielle** correspondante,
+- le **taux de fusion partielle $F$** associé.
+
+Cette minimisation est effectuée **pour chaque pixel valide** de la carte de Mercure.
+
+---
+
+### Cartes pondérées de pression et de fusion
+
+Deux matrices globales sont ainsi générées :
+
+- **`pressure_map`** : carte de la **pression de fusion partielle la plus probable** (en GPa)  
+- **`fusion_map`** : carte du **taux de fusion partielle correspondant** (en %)
+
+Ces cartes sont affichées sous forme d’images colorées (`image()`),  
+avec :
+- l’axe des **abscisses = longitude**,
+- l’axe des **ordonnées = latitude**.
+
+Les résultats sont ensuite sauvegardés pour réutilisation dans les étapes suivantes du projet :
+
+
+
+
+```{r}
+# ==================== CALCUL DES CARTES DE PRESSION ET DE FUSION ====================
 maps <- list(
   MgSi     = get_layer_as_matrix(result_array_full, 24),
   MgSi_err = get_layer_as_matrix(result_array_full, 25),
@@ -310,19 +406,18 @@ maps <- list(
 nx <- nrow(maps$MgSi)
 ny <- ncol(maps$MgSi)
 
-# --- 3. Matrices vides pour Pression et F ---
+
 pressure_map <- matrix(NA, nrow = nx, ncol = ny)
 fusion_map   <- matrix(NA, nrow = nx, ncol = ny)
 
-# --- 4. Fonction de calcul du résidu pondéré ---
 compute_residual <- function(M, sigma, E) {
   valid <- !is.na(M) & !is.na(sigma)
   if (sum(valid) < 3) return(NA)
   sqrt(sum(((M[valid] - E[valid]) / sigma[valid])^2))
 }
 
-# --- 5. Boucle principale : minimisation du résidu pondéré ---
-pb <- txtProgressBar(min = 0, max = nx, style = 3)
+
+
 
 for (x in 1:nx) {
   for (y in 1:ny) {
@@ -342,9 +437,8 @@ for (x in 1:nx) {
     pressure_map[x,y] <- exp_data$Pression[best_index]
     fusion_map[x,y]   <- exp_data$F[best_index]
   }
-  setTxtProgressBar(pb, x)
 }
-close(pb)
+
 
 lst <- list(
   pressure_map = pressure_map,
@@ -353,7 +447,7 @@ lst <- list(
 
 for (name in lst) {
   image(
-    z = t(apply(name, 2, rev)),   # rotation correcte pour l'affichage
+    z = t(apply(name, 2, rev)),   
     col = terrain.colors(100),
     main = "",
     axes = T,
@@ -362,21 +456,15 @@ for (name in lst) {
     
   )}
 
-# --- 7. Sauvegarde des résultats ---
 saveRDS(pressure_map, file.path(base_path, "pressure_map_masked_weighted.rds"))
 saveRDS(fusion_map,   file.path(base_path, "fusion_map_masked_weighted.rds"))
-cat("\n✅ Cartes de pression et de fusion pondérées sauvegardées.\n")
+
+
 ```
 
 
 
-
-
-
-
-
-
-
+# Références
 
 <a id="nittler2020"></a>
 Nittler, L.R., Frank, E.A., Weider, S.Z., Crapster-Pregont, E., Vorburger, A., Starr, R.D. &

@@ -184,6 +184,8 @@ get_layer_as_matrix <- function(result_array_full, layer_index) {
 
 
 
+
+
 # ==================== CALCUL DES CARTES DE PRESSION ET DE FUSION ====================
 
 library(plotly)
@@ -274,6 +276,4 @@ saveRDS(fusion_map,   file.path(base_path, "fusion_map_masked_weighted.rds"))
 cat("\n✅ Cartes de pression et de fusion pondérées sauvegardées.\n")
 
 
-
-rexplqiue bien le calcul
   
