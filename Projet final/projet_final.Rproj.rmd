@@ -74,7 +74,7 @@ Le code effectue ensuite un contrôle statistique du cube (nombre de pixels vali
 rm(list=ls())
 
 # ==================== PACKAGES ====================
-packages <- c("raster","bmp","png","rstudioapi","abind","plotly")
+packages <- c("raster","bmp","png","rstudioapi","abind")
 installed_packages <- packages %in% installed.packages()[,"Package"]
 if (any(!installed_packages)) install.packages(packages[!installed_packages])
 lapply(packages, library, character.only = TRUE)
@@ -191,7 +191,6 @@ correction_factors <- list(
 # ==================== CONSTRUCTION DU CUBE ====================
 result_array <- process_files_to_3d_array(directory_path, correction_factors)
 layer_names  <- attr(result_array, "layer_names")
-cat("✅ Cube initial chargé :", dim(result_array)[3], "couches\n")
 
 # ==================== MASQUE COMMUN (5 RAPPORTS .bmp) ====================
 idx_mgsi <- grep("^mgsi\\.bmp$", layer_names, ignore.case = TRUE)
@@ -223,8 +222,6 @@ for (i in 1:dim(result_array)[3]) {
 result_array_full <- abind::abind(result_array, masked_cube, along = 3)
 attr(result_array_full, "layer_names") <- c(layer_names, paste0(layer_names, "_masked"))
 
-cat("✅ Cube final :", dim(result_array_full)[3], "couches (doublé)\n")
-
 # ==================== STATISTIQUES DES COUCHES ====================
 na_counts <- sapply(1:dim(result_array_full)[3], function(i) sum(is.na(result_array_full[,,i])))
 layer_info <- data.frame(
@@ -232,12 +229,10 @@ layer_info <- data.frame(
   Layer = attr(result_array_full, "layer_names"),
   NA_Count = na_counts
 )
-cat("\n=== STATISTIQUES DES COUCHES ===\n")
-print(layer_info)
 
 # ==================== SAUVEGARDE ====================
 saveRDS(result_array_full, file = result_file)
-cat("\n💾 Sauvegardé :", result_file, "\n")
+
 
 result_array_full[result_array_full == 0 | abs(result_array_full) < 1e-10] <- NA_real_
 #nombre de NA dans chaque couche
@@ -245,33 +240,37 @@ na_counts <- sapply(1:dim(result_array_full)[3], function(i) sum(is.na(result_ar
 layer_info <- data.frame(Index = seq_along(attr(result_array_full, "layer_names")), Layer = attr(result_array_full, "layer_names"), NA_Count = na_counts)
 print(layer_info) # Afficher les informations des couches avec le nombre de
 
-```
 
-La fonction ci-dessous permet d'extraire une matrice 2D (une couche) du tableau 3D en fonction de l'index de la couche et de potentiellement l'afficher.
 
-```{r}
-get_layer_as_matrix <- function(result_array, layer_index) {
-
-  if (layer_index < 1 || layer_index > dim(result_array)[3]) { #check si l'index est inf. à 1 (index minimum) ou si il est sup. au nombre de couche de result_array
+get_layer_as_matrix <- function(result_array_full, layer_index) {
+  
+  if (layer_index < 1 || layer_index > dim(result_array_full)[3]) { #check si l'index est inf. à 1 (index minimum) ou si il est sup. au nombre de couche de result_array
     stop("Layer index out of bounds.")
   }
-  return(result_array[,,layer_index])   # Extrait et retourne la couche spécifiée sous forme de matrice
+  return(result_array_full[,,layer_index])   # Extrait et retourne la couche spécifiée sous forme de matrice
 }
 
-# Boucle d'affichage avec titre = nom du fichier
-for (i in seq_along(layer_names)) {
-  layer_matrix <- get_layer_as_matrix(result_array_full, i)
-  
+# === Afficher les cartes élémentaires (indices 1, 3, 7, 10, 12) ===
+
+indices <- c(1, 3, 7, 10, 12)
+names <- c("Al/Si", "Ca/Si", "Fe/Si", "Mg/Si", "S/Si")
+
+for (k in seq_along(indices)) {
+  i <- indices[k]
+  L <- get_layer_as_matrix(result_array_full, i)
   image(
-    z = t(apply(layer_matrix, 2, rev)),   # rotation correcte pour l'affichage
+    z = t(apply(L, 2, rev)), 
+    main = paste("Carte élémentaire du", names[k]),
     col = terrain.colors(100),
-    main = paste("Couche", i, "-", layer_names[i]),  # Titre avec nom de fichier
-    axes = FALSE,
+    axes = TRUE,
     xlab = "Longitude",
     ylab = "Latitude"
   )
 }
+
+
 ```
+
 
 ## Intégration des données expérimentales
 
@@ -430,42 +429,33 @@ compute_residual <- function(M, sigma, E) {
 make_maps <- function(exp_data, label) {
   pressure_map <- matrix(NA, nrow = nx, ncol = ny)
   fusion_map   <- matrix(NA, nrow = nx, ncol = ny)
-  
-  pb <- txtProgressBar(min = 0, max = nx, style = 3)
+
   for (x in 1:nx) {
     for (y in 1:ny) {
-      M <- c(maps$MgSi[x,y], maps$AlSi[x,y], maps$CaSi[x,y],
-             maps$FeSi[x,y], maps$SSi[x,y])
-      sigma <- c(maps$MgSi_err[x,y], maps$AlSi_err[x,y], maps$CaSi_err[x,y],
-                 maps$FeSi_err[x,y], maps$SSi_err[x,y])
+      M <- c(maps$MgSi[x, y], maps$AlSi[x, y], maps$CaSi[x, y],
+             maps$FeSi[x, y], maps$SSi[x, y])
+      sigma <- c(maps$MgSi_err[x, y], maps$AlSi_err[x, y], maps$CaSi_err[x, y],
+                 maps$FeSi_err[x, y], maps$SSi_err[x, y])
       if (all(is.na(M))) next
-      
-      residuals <- apply(exp_data[, c("Mg/Si","Al/Si","Ca/Si","Fe/Si","S/Si")], 1, function(E){
+
+      residuals <- apply(exp_data[, c("Mg/Si", "Al/Si", "Ca/Si", "Fe/Si", "S/Si")], 1, function(E) {
         compute_residual(M, sigma, E)
       })
-      
+
       best_index <- which.min(residuals)
       if (is.na(best_index)) next
-      
-      pressure_map[x,y] <- exp_data$Pression[best_index]
-      fusion_map[x,y]   <- exp_data$F[best_index]
+
+      pressure_map[x, y] <- exp_data$Pression[best_index]
+      fusion_map[x, y]   <- exp_data$F[best_index]
     }
-    setTxtProgressBar(pb, x)
   }
-  close(pb)
-  cat("\n✅ Calcul terminé pour", label, "\n")
-  list(pressure = pressure_map, fusion = fusion_map)
+
+  return(list(pressure = pressure_map, fusion = fusion_map))
 }
 
 # --- 5. Exécution pour chaque jeu expérimental ---
 maps_Mer8  <- make_maps(data_Mer8,  "Mer8")
 maps_Mer15 <- make_maps(data_Mer15, "Mer15")
-
-# --- 6. Sauvegarde des cartes (facultatif mais conseillé) ---
-saveRDS(maps_Mer8$pressure,  file.path(base_path, "pressure_map_Mer8.rds"))
-saveRDS(maps_Mer8$fusion,    file.path(base_path, "fusion_map_Mer8.rds"))
-saveRDS(maps_Mer15$pressure, file.path(base_path, "pressure_map_Mer15.rds"))
-saveRDS(maps_Mer15$fusion,   file.path(base_path, "fusion_map_Mer15.rds"))
 
 # --- 7. Ajout des 4 cartes au cube principal ---
 result_array_full <- abind::abind(
@@ -485,14 +475,9 @@ attr(result_array_full, "layer_names") <- c(
 
 # --- 8. Sauvegarde du cube complet ---
 saveRDS(result_array_full, file = result_file)
-cat("\n💾 Cube 3D mis à jour avec les cartes Mer8/Mer15 :", dim(result_array_full)[3], "couches.\n")
 
-# --- 9. Vérification rapide ---
-layer_info <- data.frame(
-  Index = seq_along(attr(result_array_full, "layer_names")),
-  Layer = attr(result_array_full, "layer_names")
-)
-print(tail(layer_info, 8))
+
+
 
 
 # Exemple d’extraction
@@ -597,7 +582,7 @@ Les courbes supérieures représentent les distributions propres à chaque régi
 
 Cette approche met en évidence les contrastes géochimiques régionaux et permet d’évaluer la variabilité intra-régionale par rapport à la composition moyenne de Mercure
 ```{r}
-# ==================== DISTRIBUTIONS RÉGIONALES/GLOBALES — LÉGENDE + HAUTEURS FIXES ====================
+# ==================== DISTRIBUTIONS RÉGIONALES/GLOBALES — FIGURES SÉPARÉES ====================
 
 # --- Packages ---
 if (!require(patchwork)) install.packages("patchwork")
@@ -630,8 +615,8 @@ cols_base <- c(
   "Rach"="#4B4E6D", "High-Al NVP"="#76B041", "Low-Al NVP"="#A23B72"
 )
 
-# --- 3. Fonction pour créer les paires de graphiques ---
-make_pair <- function(r, show_legend = FALSE){
+# --- 3. Fonction pour créer un couple avec légende ---
+make_pair <- function(r){
   d  <- df[df$Ratio==r, ]
   xr <- range(d$Value, na.rm = TRUE)
   
@@ -648,7 +633,7 @@ make_pair <- function(r, show_legend = FALSE){
       axis.text.x = element_blank(),
       axis.ticks.x = element_blank(),
       panel.grid.minor = element_blank(),
-      legend.position = if (show_legend) "bottom" else "none"
+      legend.position = "bottom"
     )
   
   # Distribution globale
@@ -663,148 +648,21 @@ make_pair <- function(r, show_legend = FALSE){
       legend.position = "none"
     )
   
-  # Empilement vertical (hauteurs égales)
-  p_reg / p_glb + plot_layout(heights = c(1, 1))
+  # Empilement vertical avec légende commune
+  p_reg / p_glb + plot_layout(heights = c(1, 1), guides = "collect") &
+    theme(
+      legend.position = "bottom",
+      legend.justification = "center",
+      legend.text = element_text(size = 10),
+      legend.title = element_text(face = "bold")
+    )
 }
 
-# --- 4. Création des 5 couples (on garde la légende sur le dernier) ---
-pairs <- list(
-  make_pair("MgSi"),
-  make_pair("AlSi"),
-  make_pair("CaSi"),
-  make_pair("FeSi"),
-  make_pair("SSi", show_legend = TRUE)  # légende visible ici
-)
 
-# --- 5. Combinaison : 3 couples à gauche, 2 à droite ---
-left_block  <- wrap_plots(pairs[1:3], ncol = 1, heights = rep(1, 3))
-right_block <- wrap_plots(pairs[4:5], ncol = 1, heights = rep(1, 2))
 
-# --- 6. Assemblage global + légende commune ---
-final_layout <- (left_block | right_block) +
-  plot_layout(widths = c(3, 2), guides = "collect") &
-  theme(
-    legend.position = "bottom",
-    legend.justification = "right",
-    legend.text = element_text(size = 10),
-    legend.title = element_text(face = "bold")
-  )
-
-# --- 7. Affichage final ---
-final_layout
-
-# --- Option : Export haute qualité ---
-# ggsave("distributions_region_global_hauteur_legende.png", final_layout, width = 16, height = 10, dpi = 300)
-
+# --- Option : Export individuel ---
+# ggsave(paste0("distribution_", r, ".png"), pairs[[i]], width = 8, height = 6, dpi = 300)
 ```
-Les graphiques suivants détaillent les distributions de densité des cinq rapports élémentaires pour chacune des régions géologiques majeures identifiées à la surface de Mercure.
-
-Chaque couleur correspond à une région spécifique (High-Mg, Al-rich, Caloris, Rach, High-Al NVP, Low-Al NVP).
-
-Ces distributions permettent de quantifier les différences chimiques entre provinces, notamment la richesse relative en éléments alcalins, ferromagnésiens ou sulfurés, et d’identifier les tendances géochimiques caractéristiques de chaque domaine morphologique.
-```{r}
-# ==================== COURBES DE DENSITÉ PAR RÉGION (avec noms géologiques et couleurs harmonieuses) ====================
-
-# --- 1. Extraction des couches géochimiques ---
-maps <- list(
-  MgSi = get_layer_as_matrix(result_array_full, 24),
-  AlSi = get_layer_as_matrix(result_array_full, 15),
-  CaSi = get_layer_as_matrix(result_array_full, 17),
-  FeSi = get_layer_as_matrix(result_array_full, 21),
-  SSi = get_layer_as_matrix(result_array_full, 26)
-)
-
-# --- 2. Extraction de la carte des régions ---
-region_map <- get_layer_as_matrix(result_array_full, 28)
-region_vec <- as.vector(region_map)
-
-# --- 3. Définition des correspondances index → noms ---
-region_values <- c(1, 2, 3, 4, 5, 6)
-region_names  <- c("High-Mg", "Al-rich", "Caloris", "Rach", "High-Al NVP", "Low-Al NVP")
-
-# --- 4. Conversion des codes régionaux en labels texte ---
-region_factor <- factor(region_vec,
-                        levels = region_values,
-                        labels = region_names)
-# (les 0 ou NA deviennent NA = pas de région)
-
-# --- 5. Construction du data.frame pour toutes les cartes ---
-ratios <- names(maps)
-df <- do.call(rbind, lapply(ratios, function(r) {
-  vals <- as.vector(maps[[r]])
-  data.frame(
-    Ratio = r,
-    Value = vals,
-    Region = region_factor
-  )
-}))
-df <- df[complete.cases(df), ]
-
-# --- 6. Palette améliorée et harmonieuse ---
-# Palette inspirée de cartographies géologiques (couleurs naturelles)
-cols_base <- c(
-  "#E4572E",  # orange chaud - High-Mg
-  "#17BEBB",  # turquoise - Al-rich
-  "#FFC914",  # jaune doré - Caloris
-  "#4B4E6D",  # bleu-gris profond - Rach
-  "#76B041",  # vert clair - High-Al NVP
-  "#A23B72"   # magenta - Low-Al NVP
-)
-
-# Application d'une transparence douce
-cols <- adjustcolor(cols_base, alpha.f = 0.4)
-
-# --- 7. Liste finale des régions présentes ---
-region_levels <- levels(na.omit(df$Region))
-n_regions <- length(region_levels)
-
-# --- 8. Tracé des densités superposées ---
-par(mfrow = c(3, 2), mar = c(4,4,2,1))  # disposition 3x2 plots
-
-for (r in ratios) {
-  sub <- df[df$Ratio == r, ]
-  
-  # Calcul des limites pour x et y
-  xlim <- range(sub$Value, na.rm = TRUE)
-  d_all <- lapply(region_levels, function(reg) density(sub$Value[sub$Region == reg], na.rm = TRUE))
-  ylim <- c(0, max(sapply(d_all, function(d) max(d$y, na.rm = TRUE))) * 1.1)
-  
-  # Plot vide
-  plot(0, type = "n", xlim = xlim, ylim = ylim,
-       xlab = r, ylab = "Densité",
-       main = paste("Distribution par région -", r))
-  
-  # Boucle sur les régions
-  for (i in seq_along(region_levels)) {
-    reg <- region_levels[i]
-    vals <- sub$Value[sub$Region == reg]
-    if (length(vals) < 20) next  # ignore régions trop petites
-    d <- density(vals, na.rm = TRUE)
-    polygon(d, col = cols[i], border = adjustcolor(cols_base[i], alpha.f = 0.9), lwd = 1.5)
-  }
-  
-  # Légende
-  legend("topright",
-         legend = region_levels,
-         fill = cols_base,
-         border = "gray20",
-         bty = "n",
-         cex = 0.8,
-         title = "Régions géologiques")
-}
-
-# --- Fin ---
-cat("\n✅ Graphiques de densité par région tracés avec succès.\n")
-```
-
-Pour visualiser spatialement les écarts à la moyenne globale, on calcule pour chaque rapport un score normalisé (Z-score) :
-Z = \frac{X - \mu}{\sigma}
-
-où X est la valeur du pixel, \mu la moyenne planétaire et \sigma l’écart-type.
-Les cartes obtenues représentent les anomalies relatives (en unités d’écart-type) :
-les zones rouges indiquent des excès par rapport à la moyenne, les zones bleues des déficits.
-
-Ce traitement permet de repérer clairement les domaines enrichis ou appauvris en chaque élément, en lien avec les grands ensembles géologiques (Caloris, plaines volcaniques, hauts plateaux, etc.).
 
 ```{r}
 # ==================== CARTES D'ANOMALIES NORMALISÉES (ggplot2 + grille 60°/30°) ====================
@@ -890,12 +748,6 @@ ggplot(df_all, aes(Lon, Lat, fill = Value)) +
   )
 
 ```
-Enfin, l’analyse conjointe de la densité apparente et du modèle numérique de terrain (DEM) permet d’explorer les liens entre géochimie et morphologie de surface.
-
-Les distributions régionales et globales de ces deux variables montrent comment la densité moyenne des terrains varie avec l’altitude, suggérant des différences de composition ou de porosité selon les provinces.
-
-Cette comparaison met en évidence les éventuelles corrélations entre composition chimique, processus volcaniques et structures topographiques héritées de l’histoire interne de Mercure.
-
 
 ```{r}
 # ==================== DISTRIBUTIONS DENSITÉ & DEM (régions + globales séparées) ====================
@@ -938,8 +790,8 @@ cols_base <- c(
 ## A. DENSITY par région
 p_density_region <- ggplot(df, aes(x = Density, fill = Region, color = Region)) +
   geom_density(alpha = 0.35, linewidth = 1.0, adjust = 1.2) +
-  scale_fill_manual(values = cols_base) +
-  scale_color_manual(values = cols_base) +
+  scale_fill_manual(values = cols_base, name = "Régions géologiques") +
+  scale_color_manual(values = cols_base, guide = "none") +
   labs(title = "Distribution régionale de la densité",
        x = NULL, y = "Densité de probabilité") +
   theme_minimal(base_size = 14) +
@@ -947,7 +799,10 @@ p_density_region <- ggplot(df, aes(x = Density, fill = Region, color = Region)) 
     plot.title = element_text(face = "bold", hjust = 0.5),
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
-    legend.position = "none"
+    legend.position = "bottom",
+    legend.justification = "center",
+    legend.text = element_text(size = 10),
+    legend.title = element_text(face = "bold")
   )
 
 ## B. DENSITY globale
@@ -957,13 +812,20 @@ p_density_global <- ggplot(df, aes(x = Density)) +
        x = "Densité (unités relatives)", y = "Densité de probabilité") +
   theme_minimal(base_size = 14) +
   theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    legend.position = "none"
+    plot.title = element_text(face = "bold", hjust = 0.5)
   )
 
-## Combinaison verticale
-plot_density <- p_density_region / p_density_global + plot_layout(heights = c(1, 0.6))
-plot_density  # <-- Affiche la figure DENSITY
+## Combinaison verticale avec légende commune
+plot_density <- p_density_region / p_density_global +
+  plot_layout(heights = c(1, 0.6), guides = "collect") &
+  theme(
+    legend.position = "bottom",
+    legend.justification = "center",
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(size = 10)
+  )
+
+plot_density  # <-- Affiche la figure DENSITY avec légende
 
 
 # === FIGURE 2 : DEM ===
@@ -971,8 +833,8 @@ plot_density  # <-- Affiche la figure DENSITY
 ## C. DEM par région
 p_dem_region <- ggplot(df, aes(x = DEM, fill = Region, color = Region)) +
   geom_density(alpha = 0.35, linewidth = 1.0, adjust = 1.2) +
-  scale_fill_manual(values = cols_base) +
-  scale_color_manual(values = cols_base) +
+  scale_fill_manual(values = cols_base, name = "Régions géologiques") +
+  scale_color_manual(values = cols_base, guide = "none") +
   labs(title = "Distribution régionale de l'altitude (DEM)",
        x = NULL, y = "Densité de probabilité") +
   theme_minimal(base_size = 14) +
@@ -980,7 +842,10 @@ p_dem_region <- ggplot(df, aes(x = DEM, fill = Region, color = Region)) +
     plot.title = element_text(face = "bold", hjust = 0.5),
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
-    legend.position = "none"
+    legend.position = "bottom",
+    legend.justification = "center",
+    legend.text = element_text(size = 10),
+    legend.title = element_text(face = "bold")
   )
 
 ## D. DEM global
@@ -990,14 +855,20 @@ p_dem_global <- ggplot(df, aes(x = DEM)) +
        x = "Altitude (m)", y = "Densité de probabilité") +
   theme_minimal(base_size = 14) +
   theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    legend.position = "none"
+    plot.title = element_text(face = "bold", hjust = 0.5)
   )
 
-## Combinaison verticale
-plot_dem <- p_dem_region / p_dem_global + plot_layout(heights = c(1, 0.6))
-plot_dem  # <-- Affiche la figure DEM
+## Combinaison verticale avec légende commune
+plot_dem <- p_dem_region / p_dem_global +
+  plot_layout(heights = c(1, 0.6), guides = "collect") &
+  theme(
+    legend.position = "bottom",
+    legend.justification = "center",
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(size = 10)
+  )
 
+plot_dem  # <-- Affiche la figure DEM avec légende
 ```
 
 

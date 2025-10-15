@@ -1,143 +1,181 @@
-/* ===== Thème rétro spatial (NASA old reports style) ===== */
+/* ===== Thème clair et professionnel (style rapport scientifique) ===== */
 
 /* Corps du document */
 body {
-  background-color: #f5f1e6;   /* beige papier vieilli */
-  color: #2a2a2a;
-  font-family: "Georgia", "Times New Roman", serif;
+  background-color: #ffffff;   /* fond blanc propre */
+  color: #1e1e1e;              /* texte gris foncé */
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   line-height: 1.7;
-  padding: 30px;
-  max-width: 1200px;   /* largeur élargie */
+  padding: 40px 60px;
+  max-width: 1200px;
   margin: auto;
 }
 
-/* Titres avec style "rapport technique" */
-h1, h2, h3 {
-  color: #2d3e50;
-  font-family: "Palatino Linotype", "Book Antiqua", serif;
-  border-bottom: 1px solid #b2a88f;
-  padding-bottom: 4px;
-  margin-top: 40px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+/* Titres sobres et hiérarchiques */
+h1, h2, h3, h4 {
+  font-family: "Georgia", "Times New Roman", serif;
+  color: #22334d;
+  margin-top: 50px;
+  margin-bottom: 20px;
+  font-weight: 600;
 }
 
 h1 {
-  font-size: 2.2em;
+  font-size: 2.4em;
   text-align: center;
-  margin-bottom: 20px;
+  border-bottom: 3px solid #22334d;
+  padding-bottom: 10px;
+  letter-spacing: 1px;
 }
 h2 {
-  font-size: 1.6em;
-  color: #3b4d63;
+  font-size: 1.8em;
+  border-bottom: 1px solid #cccccc;
+  padding-bottom: 6px;
+  color: #2f466c;
 }
 h3 {
-  font-size: 1.3em;
+  font-size: 1.4em;
+  color: #3b5179;
+  margin-top: 30px;
+}
+h4 {
+  font-size: 1.15em;
   color: #4a5b70;
+  margin-top: 20px;
 }
 
-/* Liens sobres */
+/* Liens discrets et élégants */
 a {
-  color: #4a5b70;
-  text-decoration: underline;
+  color: #1b4b91;
+  text-decoration: none;
+  border-bottom: 1px solid #cbd6ec;
 }
 a:hover {
-  color: #000000;
+  color: #0d2e5f;
+  border-bottom: 1px solid #1b4b91;
 }
 
 /* Code inline */
 code {
-  background-color: #f0ece0;
-  color: #2a2a2a;
+  background-color: #f5f5f5;
+  color: #333333;
   padding: 2px 5px;
   border-radius: 3px;
   font-family: "Courier New", monospace;
   font-size: 0.95em;
-  border: 1px solid #d6d1c4;
+  border: 1px solid #e0e0e0;
 }
 
 /* Blocs de code */
 pre {
-  background-color: #f0ece0;   /* fond rétro clair */
+  background-color: #f8f8f8;
   color: #2a2a2a;
-  border: 1px solid #d6d1c4;
+  border: 1px solid #e3e3e3;
   border-radius: 6px;
   padding: 12px 15px;
-  margin: 20px 0;
+  margin: 25px 0;
   overflow-x: auto;
   line-height: 1.5;
   font-size: 0.95em;
   font-family: "Courier New", monospace;
-  box-shadow: inset 0 0 6px #e0dbce;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.05);
 }
 
-/* Supprimer les séparateurs de lignes */
 pre code {
-  display: block;
-  white-space: pre;
-  border: none !important;
   background: none !important;
-  box-shadow: none !important;
+  border: none !important;
 }
 
-/* Tableaux type rapport spatial */
+/* Tableaux élégants */
 table {
   border-collapse: collapse;
   width: 100%;
-  margin-top: 20px;
+  margin-top: 25px;
   font-size: 0.95em;
 }
 th, td {
-  border: 1px solid #c4bca5;
-  padding: 8px;
+  border: 1px solid #dddddd;
+  padding: 8px 12px;
   text-align: left;
 }
 th {
-  background-color: #e6e1d5;
-  color: #2a2a2a;
-  font-weight: bold;
+  background-color: #f2f4f8;
+  color: #22334d;
+  font-weight: 600;
 }
 tr:nth-child(even) {
-  background-color: #f9f7f2;
+  background-color: #fafafa;
 }
 
-/* TOC façon "dossier technique" */
+/* Table des matières (TOC) épurée */
 #TOC {
   position: fixed;
-  top: 100px;          /* distance du haut */
-  left: 40px;          /* plus à gauche */
-  max-width: 220px;
-  background: #e6e1d5;
-  border: 1px solid #c4bca5;
-  padding: 10px;
+  top: 100px;
+  left: 40px;
+  max-width: 230px;
+  background: #f8f8f8;
+  border: 1px solid #e0e0e0;
+  padding: 12px;
   border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   z-index: 1000;
 }
 #TOC a {
-  color: #2d3e50;
+  color: #22334d;
+  text-decoration: none;
 }
 #TOC a:hover {
-  color: #000000;
+  color: #0d2e5f;
+}
+#TOC ul {
+  list-style-type: none;
+  padding-left: 10px;
+}
+#TOC li {
+  margin-bottom: 4px;
+  font-size: 0.95em;
 }
 
-/* Décalage du contenu principal pour éviter chevauchement avec TOC */
+/* Décalage du contenu principal pour le TOC */
 .main-container {
-  margin-left: 280px;
+  margin-left: 300px;
 }
 
-/* Citations */
+/* Citations sobres */
 blockquote {
-  border-left: 4px solid #b2a88f;
-  padding-left: 12px;
-  color: #4a4a4a;
+  border-left: 4px solid #d0d7e2;
+  padding-left: 14px;
+  color: #444;
   font-style: italic;
-  background: #f9f7f2;
-  margin: 20px 0;
+  background: #f9f9f9;
+  margin: 25px 0;
 }
 
 /* Lignes horizontales */
 hr {
   border: none;
-  border-top: 1px solid #c4bca5;
+  border-top: 1px solid #cccccc;
   margin: 40px 0;
+}
+
+/* Figures et images */
+figure {
+  text-align: center;
+  margin: 30px 0;
+}
+figcaption {
+  font-size: 0.9em;
+  color: #555555;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* Pied de page optionnel */
+footer {
+  text-align: center;
+  font-size: 0.85em;
+  color: #777777;
+  margin-top: 50px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 10px;
 }
