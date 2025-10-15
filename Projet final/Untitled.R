@@ -1,5 +1,3 @@
-rm(list=ls())
-
 # ==================== PACKAGES ====================
 packages <- c("raster","bmp","png","rstudioapi","abind")
 installed_packages <- packages %in% installed.packages()[,"Package"]
@@ -197,9 +195,8 @@ mer15_path <- "/Users/alexandremichaux/Documents/UCA/Cours/Analyse des données
 data_Mer8  <- read.csv(mer8_path,  sep = ",", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
 data_Mer15 <- read.csv(mer15_path, sep = ",", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
 
-# Combiner les deux jeux expérimentaux
-exp_data <- rbind(data_Mer8, data_Mer15)
-exp_data <- exp_data[complete.cases(exp_data[, c("Mg/Si","Al/Si","Ca/Si","Fe/Si","S/Si")]), ]
+data_Mer8  <- data_Mer8 [complete.cases(data_Mer8 [,  c("Mg/Si","Al/Si","Ca/Si","Fe/Si","S/Si")]), ]
+data_Mer15 <- data_Mer15[complete.cases(data_Mer15[, c("Mg/Si","Al/Si","Ca/Si","Fe/Si","S/Si")]), ]
 
 # --- 2. Extraction des couches masquées depuis result_array_full ---
 maps <- list(
@@ -218,62 +215,546 @@ maps <- list(
 nx <- nrow(maps$MgSi)
 ny <- ncol(maps$MgSi)
 
-# --- 3. Matrices vides pour Pression et F ---
-pressure_map <- matrix(NA, nrow = nx, ncol = ny)
-fusion_map   <- matrix(NA, nrow = nx, ncol = ny)
-
-# --- 4. Fonction de calcul du résidu pondéré ---
+# --- 3. Fonction de calcul du résidu pondéré ---
 compute_residual <- function(M, sigma, E) {
   valid <- !is.na(M) & !is.na(sigma)
   if (sum(valid) < 3) return(NA)
   sqrt(sum(((M[valid] - E[valid]) / sigma[valid])^2))
 }
 
-# --- 5. Boucle principale : minimisation du résidu pondéré ---
-pb <- txtProgressBar(min = 0, max = nx, style = 3)
-
-for (x in 1:nx) {
-  for (y in 1:ny) {
-    M <- c(maps$MgSi[x,y], maps$AlSi[x,y], maps$CaSi[x,y],
-           maps$FeSi[x,y], maps$SSi[x,y])
-    sigma <- c(maps$MgSi_err[x,y], maps$AlSi_err[x,y], maps$CaSi_err[x,y],
-               maps$FeSi_err[x,y], maps$SSi_err[x,y])
-    if (all(is.na(M))) next
-    
-    residuals <- apply(exp_data[, c("Mg/Si","Al/Si","Ca/Si","Fe/Si","S/Si")], 1, function(E){
-      compute_residual(M, sigma, E)
-    })
-    
-    best_index <- which.min(residuals)
-    if (is.na(best_index)) next
-    
-    pressure_map[x,y] <- exp_data$Pression[best_index]
-    fusion_map[x,y]   <- exp_data$F[best_index]
+# --- 4. Fonction générique pour créer les cartes Pression/Fusion ---
+make_maps <- function(exp_data, label) {
+  pressure_map <- matrix(NA, nrow = nx, ncol = ny)
+  fusion_map   <- matrix(NA, nrow = nx, ncol = ny)
+  
+  pb <- txtProgressBar(min = 0, max = nx, style = 3)
+  for (x in 1:nx) {
+    for (y in 1:ny) {
+      M <- c(maps$MgSi[x,y], maps$AlSi[x,y], maps$CaSi[x,y],
+             maps$FeSi[x,y], maps$SSi[x,y])
+      sigma <- c(maps$MgSi_err[x,y], maps$AlSi_err[x,y], maps$CaSi_err[x,y],
+                 maps$FeSi_err[x,y], maps$SSi_err[x,y])
+      if (all(is.na(M))) next
+      
+      residuals <- apply(exp_data[, c("Mg/Si","Al/Si","Ca/Si","Fe/Si","S/Si")], 1, function(E){
+        compute_residual(M, sigma, E)
+      })
+      
+      best_index <- which.min(residuals)
+      if (is.na(best_index)) next
+      
+      pressure_map[x,y] <- exp_data$Pression[best_index]
+      fusion_map[x,y]   <- exp_data$F[best_index]
+    }
+    setTxtProgressBar(pb, x)
   }
-  setTxtProgressBar(pb, x)
+  close(pb)
+  cat("\n✅ Calcul terminé pour", label, "\n")
+  list(pressure = pressure_map, fusion = fusion_map)
 }
-close(pb)
 
-lst <- list(
-  pressure_map = pressure_map,
-  fusion_map = fusion_map
+# --- 5. Exécution pour chaque jeu expérimental ---
+maps_Mer8  <- make_maps(data_Mer8,  "Mer8")
+maps_Mer15 <- make_maps(data_Mer15, "Mer15")
+
+# --- 6. Sauvegarde des cartes (facultatif mais conseillé) ---
+saveRDS(maps_Mer8$pressure,  file.path(base_path, "pressure_map_Mer8.rds"))
+saveRDS(maps_Mer8$fusion,    file.path(base_path, "fusion_map_Mer8.rds"))
+saveRDS(maps_Mer15$pressure, file.path(base_path, "pressure_map_Mer15.rds"))
+saveRDS(maps_Mer15$fusion,   file.path(base_path, "fusion_map_Mer15.rds"))
+
+# --- 7. Ajout des 4 cartes au cube principal ---
+result_array_full <- abind::abind(
+  result_array_full,
+  maps_Mer8$pressure,
+  maps_Mer8$fusion,
+  maps_Mer15$pressure,
+  maps_Mer15$fusion,
+  along = 3
 )
 
-for (name in lst) {
+# Mise à jour des noms des couches
+attr(result_array_full, "layer_names") <- c(
+  attr(result_array_full, "layer_names"),
+  "pressure_Mer8", "fusion_Mer8", "pressure_Mer15", "fusion_Mer15"
+)
+
+# --- 8. Sauvegarde du cube complet ---
+saveRDS(result_array_full, file = result_file)
+cat("\n💾 Cube 3D mis à jour avec les cartes Mer8/Mer15 :", dim(result_array_full)[3], "couches.\n")
+
+# --- 9. Vérification rapide ---
+layer_info <- data.frame(
+  Index = seq_along(attr(result_array_full, "layer_names")),
+  Layer = attr(result_array_full, "layer_names")
+)
+print(tail(layer_info, 8))
+
+
+# Exemple d’extraction
+pressure_Mer8  <- get_layer_as_matrix(result_array_full,29)
+fusion_Mer8    <- get_layer_as_matrix(result_array_full,30)
+pressure_Mer15 <- get_layer_as_matrix(result_array_full, 31)
+fusion_Mer15   <- get_layer_as_matrix(result_array_full, 32)
+
+
+# Titres à afficher pour chaque couche
+titles <- c("pressure_Mer8", "fusion_Mer8", "pressure_Mer15", "fusion_Mer15")
+
+# Boucle sur les indices correspondants
+for (i in 1:4) {
+  L <- get_layer_as_matrix(result_array_full, 28 + i)  # 29 → 32
+  
   image(
-    z = t(apply(name, 2, rev)),   # rotation correcte pour l'affichage
+    z = t(apply(L, 2, rev)),      # rotation correcte pour affichage
+    main = titles[i],             # titre personnalisé
     col = terrain.colors(100),
-    main = "",
-    axes = T,
+    axes = TRUE,
     xlab = "Longitude",
     ylab = "Latitude"
-    
-  )}
-
-# --- 7. Sauvegarde des résultats ---
-saveRDS(pressure_map, file.path(base_path, "pressure_map_masked_weighted.rds"))
-saveRDS(fusion_map,   file.path(base_path, "fusion_map_masked_weighted.rds"))
-cat("\n✅ Cartes de pression et de fusion pondérées sauvegardées.\n")
+  )
+}
 
 
+# ==================== BOXPLOTS CLASSIQUES + INCERTITUDES SUPERPOSÉES ====================
+
+# --- 1. Données à partir de ton objet maps ---
+ratios <- c("MgSi", "AlSi", "CaSi", "FeSi", "SSi")
+
+df <- do.call(rbind, lapply(ratios, function(r) {
+  vals <- as.vector(maps[[r]])
+  errs <- as.vector(maps[[paste0(r, "_err")]])
+  data.frame(
+    Ratio = r,
+    Value = vals,
+    Error = errs
+  )
+}))
+
+df <- df[complete.cases(df), ]
+
+# --- 2. Calcul de statistiques par rapport ---
+library(dplyr)
+err_summary <- df %>%
+  group_by(Ratio) %>%
+  summarise(
+    mean_val = mean(Value, na.rm = TRUE),
+    mean_err = mean(Error, na.rm = TRUE),
+    sd_err   = sd(Error, na.rm = TRUE)
+  )
+
+# --- 3. Couleurs pour les boxplots et les symboles d’erreur ---
+cols_box <- c("darkorange", "steelblue", "seagreen3", "indianred3", "goldenrod")
+cols_err <- c("chocolate3", "navy", "forestgreen", "darkred", "darkgoldenrod4")
+
+# --- 4. Tracé des boxplots normaux ---
+boxplot(Value ~ Ratio, data = df,
+        col = cols_box,
+        border = "gray30",
+        ylab = "Rapport élémentaire (X/Si)",
+        main = "Distribution des rapports élémentaires avec incertitudes",
+        outline = FALSE,
+        las = 1,
+        cex.axis = 0.9)
+
+# --- 5. Superposition des incertitudes moyennes (autre couleur / symbole) ---
+# Positions x des boxplots (1:5)
+xpos <- 1:length(ratios)
+
+# Points = moyennes, barres = ± écart-type des erreurs
+points(xpos, err_summary$mean_val, 
+       pch = 21, bg = "white", col = "black", cex = 1.3, lwd = 1.5)
+arrows(xpos,
+       err_summary$mean_val - err_summary$mean_err,
+       xpos,
+       err_summary$mean_val + err_summary$mean_err,
+       angle = 90, code = 3, length = 0.08, lwd = 2, col = cols_err)
+
+# --- 6. Légende claire ---
+legend("topleft",
+       legend = c("Distribution (boxplot)", "Incertitude moyenne ±1σ(err)"),
+       pch = c(15, 21),
+       pt.bg = c(cols_box[1], "white"),
+       col = c("gray30", "black"),
+       lwd = c(0, 2),
+       pt.cex = c(1.8, 1.3),
+       bty = "n")
+
+# ==================== DISTRIBUTIONS RÉGIONALES/GLOBALES — LÉGENDE + HAUTEURS FIXES ====================
+
+# --- Packages ---
+if (!require(patchwork)) install.packages("patchwork")
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+
+# --- 1. Données ---
+maps <- list(
+  MgSi = get_layer_as_matrix(result_array_full, 24),
+  AlSi = get_layer_as_matrix(result_array_full, 15),
+  CaSi = get_layer_as_matrix(result_array_full, 17),
+  FeSi = get_layer_as_matrix(result_array_full, 21),
+  SSi  = get_layer_as_matrix(result_array_full, 26)
+)
+
+region_map   <- get_layer_as_matrix(result_array_full, 28)
+region_vals  <- c(1,2,3,4,5,6)
+region_names <- c("High-Mg","Al-rich","Caloris","Rach","High-Al NVP","Low-Al NVP")
+Region <- factor(as.vector(region_map), levels = region_vals, labels = region_names)
+
+ratios <- names(maps)
+df <- do.call(rbind, lapply(ratios, function(r){
+  data.frame(Ratio = r, Value = as.vector(maps[[r]]), Region = Region)
+})) |> na.omit()
+
+# --- 2. Palette géologique ---
+cols_base <- c(
+  "High-Mg"="#E4572E", "Al-rich"="#17BEBB", "Caloris"="#FFC914",
+  "Rach"="#4B4E6D", "High-Al NVP"="#76B041", "Low-Al NVP"="#A23B72"
+)
+
+# --- 3. Fonction pour créer les paires de graphiques ---
+make_pair <- function(r, show_legend = FALSE){
+  d  <- df[df$Ratio==r, ]
+  xr <- range(d$Value, na.rm = TRUE)
   
+  # Distribution régionale
+  p_reg <- ggplot(d, aes(Value, fill=Region, color=Region)) +
+    geom_density(alpha=.35, linewidth=1, adjust=1.2) +
+    scale_fill_manual(values=cols_base, name="Régions géologiques") +
+    scale_color_manual(values=cols_base, guide="none") +
+    scale_x_continuous(limits = xr) +
+    labs(title=paste("Distribution régionale de", r), x=NULL, y="Densité") +
+    theme_minimal(base_size=12) +
+    theme(
+      plot.title = element_text(face="bold", hjust=.5),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      legend.position = if (show_legend) "bottom" else "none"
+    )
+  
+  # Distribution globale
+  p_glb <- ggplot(d, aes(Value)) +
+    geom_density(fill="#CCCCCC", color="#444444", alpha=.6, linewidth=1.1, adjust=1.2) +
+    scale_x_continuous(limits = xr) +
+    labs(title=paste("Distribution globale de", r), x=r, y="Densité") +
+    theme_minimal(base_size=12) +
+    theme(
+      plot.title = element_text(face="bold", hjust=.5),
+      panel.grid.minor = element_blank(),
+      legend.position = "none"
+    )
+  
+  # Empilement vertical (hauteurs égales)
+  p_reg / p_glb + plot_layout(heights = c(1, 1))
+}
+
+# --- 4. Création des 5 couples (on garde la légende sur le dernier) ---
+pairs <- list(
+  make_pair("MgSi"),
+  make_pair("AlSi"),
+  make_pair("CaSi"),
+  make_pair("FeSi"),
+  make_pair("SSi", show_legend = TRUE)  # légende visible ici
+)
+
+# --- 5. Combinaison : 3 couples à gauche, 2 à droite ---
+left_block  <- wrap_plots(pairs[1:3], ncol = 1, heights = rep(1, 3))
+right_block <- wrap_plots(pairs[4:5], ncol = 1, heights = rep(1, 2))
+
+# --- 6. Assemblage global + légende commune ---
+final_layout <- (left_block | right_block) +
+  plot_layout(widths = c(3, 2), guides = "collect") &
+  theme(
+    legend.position = "bottom",
+    legend.justification = "right",
+    legend.text = element_text(size = 10),
+    legend.title = element_text(face = "bold")
+  )
+
+# --- 7. Affichage final ---
+final_layout
+
+# --- Option : Export haute qualité ---
+# ggsave("distributions_region_global_hauteur_legende.png", final_layout, width = 16, height = 10, dpi = 300)
+
+
+# ==================== COURBES DE DENSITÉ PAR RÉGION (avec noms géologiques et couleurs harmonieuses) ====================
+
+# --- 1. Extraction des couches géochimiques ---
+maps <- list(
+  MgSi = get_layer_as_matrix(result_array_full, 24),
+  AlSi = get_layer_as_matrix(result_array_full, 15),
+  CaSi = get_layer_as_matrix(result_array_full, 17),
+  FeSi = get_layer_as_matrix(result_array_full, 21),
+  SSi = get_layer_as_matrix(result_array_full, 26)
+)
+
+# --- 2. Extraction de la carte des régions ---
+region_map <- get_layer_as_matrix(result_array_full, 28)
+region_vec <- as.vector(region_map)
+
+# --- 3. Définition des correspondances index → noms ---
+region_values <- c(1, 2, 3, 4, 5, 6)
+region_names  <- c("High-Mg", "Al-rich", "Caloris", "Rach", "High-Al NVP", "Low-Al NVP")
+
+# --- 4. Conversion des codes régionaux en labels texte ---
+region_factor <- factor(region_vec,
+                        levels = region_values,
+                        labels = region_names)
+# (les 0 ou NA deviennent NA = pas de région)
+
+# --- 5. Construction du data.frame pour toutes les cartes ---
+ratios <- names(maps)
+df <- do.call(rbind, lapply(ratios, function(r) {
+  vals <- as.vector(maps[[r]])
+  data.frame(
+    Ratio = r,
+    Value = vals,
+    Region = region_factor
+  )
+}))
+df <- df[complete.cases(df), ]
+
+# --- 6. Palette améliorée et harmonieuse ---
+# Palette inspirée de cartographies géologiques (couleurs naturelles)
+cols_base <- c(
+  "#E4572E",  # orange chaud - High-Mg
+  "#17BEBB",  # turquoise - Al-rich
+  "#FFC914",  # jaune doré - Caloris
+  "#4B4E6D",  # bleu-gris profond - Rach
+  "#76B041",  # vert clair - High-Al NVP
+  "#A23B72"   # magenta - Low-Al NVP
+)
+
+# Application d'une transparence douce
+cols <- adjustcolor(cols_base, alpha.f = 0.4)
+
+# --- 7. Liste finale des régions présentes ---
+region_levels <- levels(na.omit(df$Region))
+n_regions <- length(region_levels)
+
+# --- 8. Tracé des densités superposées ---
+par(mfrow = c(3, 2), mar = c(4,4,2,1))  # disposition 3x2 plots
+
+for (r in ratios) {
+  sub <- df[df$Ratio == r, ]
+  
+  # Calcul des limites pour x et y
+  xlim <- range(sub$Value, na.rm = TRUE)
+  d_all <- lapply(region_levels, function(reg) density(sub$Value[sub$Region == reg], na.rm = TRUE))
+  ylim <- c(0, max(sapply(d_all, function(d) max(d$y, na.rm = TRUE))) * 1.1)
+  
+  # Plot vide
+  plot(0, type = "n", xlim = xlim, ylim = ylim,
+       xlab = r, ylab = "Densité",
+       main = paste("Distribution par région -", r))
+  
+  # Boucle sur les régions
+  for (i in seq_along(region_levels)) {
+    reg <- region_levels[i]
+    vals <- sub$Value[sub$Region == reg]
+    if (length(vals) < 20) next  # ignore régions trop petites
+    d <- density(vals, na.rm = TRUE)
+    polygon(d, col = cols[i], border = adjustcolor(cols_base[i], alpha.f = 0.9), lwd = 1.5)
+  }
+  
+  # Légende
+  legend("topright",
+         legend = region_levels,
+         fill = cols_base,
+         border = "gray20",
+         bty = "n",
+         cex = 0.8,
+         title = "Régions géologiques")
+}
+
+# --- Fin ---
+cat("\n✅ Graphiques de densité par région tracés avec succès.\n")
+
+# ==================== CARTES D'ANOMALIES NORMALISÉES (ggplot2 + grille 60°/30°) ====================
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(grid)  # pour unit()
+
+# 1) Extraire les couches
+ratios <- list(
+  MgSi = get_layer_as_matrix(result_array_full, 24),
+  AlSi = get_layer_as_matrix(result_array_full, 15),
+  CaSi = get_layer_as_matrix(result_array_full, 17),
+  FeSi = get_layer_as_matrix(result_array_full, 21),
+  SSi = get_layer_as_matrix(result_array_full, 26)
+)
+
+nx <- nrow(ratios$MgSi); ny <- ncol(ratios$MgSi)
+lon <- seq(-180, 180, length.out = ny)
+lat <- seq(  90, -90, length.out = nx)
+
+to_df <- function(mat, name){
+  M  <- t(mat)                              # transposée pour bonne orientation
+  mu <- mean(M, na.rm = TRUE)
+  sdv <- sd(M, na.rm = TRUE)
+  Z  <- (M - mu) / sdv
+  Z[Z >  3] <-  3
+  Z[Z < -3] <- -3
+  expand.grid(Lon = lon, Lat = lat) |>
+    mutate(Value = as.vector(Z), Ratio = name)
+}
+
+df_all <- do.call(rbind, lapply(names(ratios), \(r) to_df(ratios[[r]], r)))
+df_all <- df_all[complete.cases(df_all), ]
+
+# 2) Lignes de grille (60° lon / 30° lat)
+grid_long <- seq(-180, 180, by = 60)
+grid_lat  <- seq( -90,  90, by = 30)
+
+grid_lon_df <- do.call(rbind, lapply(grid_long, \(L) data.frame(Lon = L,   Lat = lat, type = "lon")))
+grid_lat_df <- do.call(rbind, lapply(grid_lat,  \(B) data.frame(Lon = lon, Lat = B,   type = "lat")))
+grid_lines  <- rbind(grid_lon_df, grid_lat_df)
+
+# 3) Palette
+pal <- c("#08306B","#2171B5","#DEEBF7","#FEE0D2","#CB181D","#67000D")
+
+# 4) Plot
+ggplot(df_all, aes(Lon, Lat, fill = Value)) +
+  geom_raster(interpolate = TRUE) +
+  # grilles PAR-DESSUS, sans hériter des aes du raster
+  geom_path(
+    data = grid_lines[grid_lines$type == "lon", ],
+    aes(x = Lon, y = Lat, group = Lon),
+    inherit.aes = FALSE, color = "gray35", linewidth = 0.35, alpha = 0.9
+  ) +
+  geom_path(
+    data = grid_lines[grid_lines$type == "lat", ],
+    aes(x = Lon, y = Lat, group = Lat),
+    inherit.aes = FALSE, color = "gray35", linewidth = 0.35, alpha = 0.9
+  ) +
+  scale_fill_gradientn(
+    colors = pal, limits = c(-3, 3), breaks = seq(-3, 3, 1),
+    name = "Z-score", oob = scales::squish
+  ) +
+  scale_x_continuous(breaks = grid_long) +
+  scale_y_continuous(breaks = grid_lat) +
+  coord_equal(xlim = c(-180, 180), ylim = c(-90, 90), expand = FALSE) +
+  facet_wrap(~ Ratio, ncol = 3) +
+  labs(title = "Cartes d’anomalies normalisées (Z-score)",
+       x = "Longitude (°)", y = "Latitude (°)") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title   = element_text(face = "bold", size = 16, hjust = 0.5),
+    strip.text   = element_text(face = "bold", size = 13),
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(color = "gray20"),
+    panel.grid   = element_blank(),                 # on gère la grille nous-mêmes
+    panel.border = element_rect(color = "gray50", fill = NA, linewidth = 0.4),
+    legend.position = "bottom",
+    legend.key.width = unit(2.5, "cm"),
+    legend.title = element_text(face = "bold")
+  )
+
+# ==================== DISTRIBUTIONS DENSITÉ & DEM (régions + globales séparées) ====================
+
+# --- Installation et chargement des packages nécessaires ---
+if (!require(patchwork)) install.packages("patchwork")
+library(patchwork)
+library(ggplot2)
+library(dplyr)
+
+# --- 1. Extraction des couches ---
+Density <- get_layer_as_matrix(result_array_full, 20)  # DensityGrid.dat_masked
+DEM     <- get_layer_as_matrix(result_array_full, 19)  # DEM.RDS_masked
+region_map <- get_layer_as_matrix(result_array_full, 28)
+
+# --- 2. Définition des régions ---
+region_values <- c(1, 2, 3, 4, 5, 6)
+region_names  <- c("High-Mg", "Al-rich", "Caloris", "Rach", "High-Al NVP", "Low-Al NVP")
+
+# --- 3. Construction du dataframe principal ---
+Region <- factor(as.vector(region_map), levels = region_values, labels = region_names)
+df <- data.frame(
+  Density = as.vector(Density),
+  DEM     = as.vector(DEM),
+  Region  = Region
+) |> na.omit()
+
+# --- 4. Palette harmonieuse ---
+cols_base <- c(
+  "High-Mg"     = "#E4572E",  # orange
+  "Al-rich"     = "#17BEBB",  # turquoise
+  "Caloris"     = "#FFC914",  # jaune
+  "Rach"        = "#4B4E6D",  # bleu-gris
+  "High-Al NVP" = "#76B041",  # vert clair
+  "Low-Al NVP"  = "#A23B72"   # magenta
+)
+
+# === FIGURE 1 : DENSITY ===
+
+## A. DENSITY par région
+p_density_region <- ggplot(df, aes(x = Density, fill = Region, color = Region)) +
+  geom_density(alpha = 0.35, linewidth = 1.0, adjust = 1.2) +
+  scale_fill_manual(values = cols_base) +
+  scale_color_manual(values = cols_base) +
+  labs(title = "Distribution régionale de la densité",
+       x = NULL, y = "Densité de probabilité") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = "none"
+  )
+
+## B. DENSITY globale
+p_density_global <- ggplot(df, aes(x = Density)) +
+  geom_density(fill = "#A23B72", color = "#7A2853", alpha = 0.4, linewidth = 1.1) +
+  labs(title = "Distribution globale de la densité",
+       x = "Densité (unités relatives)", y = "Densité de probabilité") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "none"
+  )
+
+## Combinaison verticale
+plot_density <- p_density_region / p_density_global + plot_layout(heights = c(1, 0.6))
+plot_density  # <-- Affiche la figure DENSITY
+
+
+# === FIGURE 2 : DEM ===
+
+## C. DEM par région
+p_dem_region <- ggplot(df, aes(x = DEM, fill = Region, color = Region)) +
+  geom_density(alpha = 0.35, linewidth = 1.0, adjust = 1.2) +
+  scale_fill_manual(values = cols_base) +
+  scale_color_manual(values = cols_base) +
+  labs(title = "Distribution régionale de l'altitude (DEM)",
+       x = NULL, y = "Densité de probabilité") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = "none"
+  )
+
+## D. DEM global
+p_dem_global <- ggplot(df, aes(x = DEM)) +
+  geom_density(fill = "#999999", color = "#555555", alpha = 0.4, linewidth = 1.1) +
+  labs(title = "Distribution globale de l'altitude",
+       x = "Altitude (m)", y = "Densité de probabilité") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "none"
+  )
+
+## Combinaison verticale
+plot_dem <- p_dem_region / p_dem_global + plot_layout(heights = c(1, 0.6))
+plot_dem  # <-- Affiche la figure DEM
+
+
+
+
